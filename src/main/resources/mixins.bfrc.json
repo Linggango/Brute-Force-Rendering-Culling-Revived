@@ -1,0 +1,37 @@
+{
+  "required": true,
+  "package": "misanthropy.brute_force_culling_revived.mixin",
+  "minVersion": "0.8.5",
+  "compatibilityLevel": "JAVA_17",
+  "refmap": "bfrc.refmap.json",
+  "injectors": {
+    "defaultRequire": 1
+  },
+  "client": [
+    "AccessorFrustum",
+    "AccessorLevelRender",
+    "AccessorMinecraft",
+    "MixinBlockEntityRender",
+    "MixinEntityRender",
+    "MixinFrustum",
+    "MixinLevelRender",
+    "MixinLevelRender$AccessorViewArea",
+    "MixinMinecraft",
+    "MixinRenderChunk",
+    "MixinRenderChunkInfo",
+    "MixinShaderInstance",
+    "MixinShaderInstance$MixinRenderSystem",
+    "MixinWindow",
+    "AccessorFrustum$AccessorFrustumIntersection",
+    "MixinInactiveProfiler",
+    "sodium.AccessorRenderSectionManager",
+    "sodium.MixinOcclusionCuller",
+    "sodium.MixinRenderRegion",
+    "sodium.MixinRenderSection",
+    "sodium.MixinRenderSectionManager",
+    "sodium.MixinSodiumWorldRenderer",
+    "sodium.MixinVisibleChunkCollector"
+  ],
+  "mixins": [
+  ]
+}
