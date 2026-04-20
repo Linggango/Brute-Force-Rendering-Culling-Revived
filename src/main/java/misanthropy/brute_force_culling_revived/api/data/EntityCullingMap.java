@@ -14,6 +14,7 @@ import org.jetbrains.annotations.NotNull;
 import java.nio.FloatBuffer;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Objects;
 import java.util.function.Consumer;
 
 import static net.minecraftforge.common.extensions.IForgeBlockEntity.INFINITE_EXTENT_AABB;
@@ -104,8 +105,8 @@ public class EntityCullingMap extends CullingMap {
             entityMap.tempObjectTimer.foreach(o -> addTemp(o, tickCount));
             this.uploadTemp.addAll(entityMap.uploadTemp);
             this.uploadEntity.putAll(entityMap.uploadEntity);
-            this.readTemp = uploadTemp;
-            this.readEntity = uploadEntity;
+            this.readTemp = new HashSet<>(this.uploadTemp);
+            this.readEntity = new HashMap<>(this.uploadEntity);
         }
 
         public Integer getIndex(Object obj) {
@@ -161,7 +162,7 @@ public class EntityCullingMap extends CullingMap {
         public void addEntityAttribute(@NotNull Consumer<Consumer<FloatBuffer>> consumer) {
             clearUpload();
             indexMap.forEach((o, index) -> {
-                addAttribute(consumer, ModLoader.getObjectAABB(o), index);
+                addAttribute(consumer, Objects.requireNonNull(ModLoader.getObjectAABB(o)), index);
                 uploadTemp.add(o);
                 uploadEntity.put(o, index);
             });

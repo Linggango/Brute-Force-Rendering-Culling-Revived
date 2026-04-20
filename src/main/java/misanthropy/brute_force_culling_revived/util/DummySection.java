@@ -1,20 +1,16 @@
 package misanthropy.brute_force_culling_revived.util;
 
 import misanthropy.brute_force_culling_revived.api.impl.IRenderSectionVisibility;
-import net.minecraft.world.phys.AABB;
-import net.minecraft.world.phys.Vec3;
-import org.jetbrains.annotations.NotNull;
 
 public class DummySection implements IRenderSectionVisibility {
-    private final int x;
-    private final int y;
-    private final int z;
+    private int x;
+    private int y;
+    private int z;
 
-    public DummySection(@NotNull AABB aabb) {
-        Vec3 center = aabb.getCenter();
-        x = (int) center.x;
-        y = (int) center.y;
-        z = (int) center.z;
+    public void set(int x, int y, int z) {
+        this.x = x;
+        this.y = y;
+        this.z = z;
     }
 
     @Override

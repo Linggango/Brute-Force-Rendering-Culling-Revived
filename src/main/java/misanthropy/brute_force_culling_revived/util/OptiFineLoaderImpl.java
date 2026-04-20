@@ -7,22 +7,32 @@ import org.jetbrains.annotations.Nullable;
 
 import java.lang.reflect.Field;
 
-@SuppressWarnings("unused")
 public class OptiFineLoaderImpl implements ShaderLoader {
     public static @Nullable Class<?> glState = null;
+    private static Field dfbField;
+    private static Field dfbGlFramebufferField;
+    private static Field shaderPackLoadedField;
+    private static Field activeFramebufferField;
+    private static Field stateGlFramebufferField;
 
     @Override
     public int getFrameBufferID() {
         try {
-            assert CullingStateManager.OptiFine != null;
-            Field f = CullingStateManager.OptiFine.getDeclaredField("dfb");
-            f.setAccessible(true);
-            Object dfb = f.get(null);
-            Field buffer = dfb.getClass().getDeclaredField("glFramebuffer");
-            buffer.setAccessible(true);
-            return (int) buffer.get(dfb);
-        } catch (NoSuchFieldException | IllegalAccessException e) {
-            e.fillInStackTrace();
+            if (dfbField == null) {
+                dfbField = CullingStateManager.OptiFine.getDeclaredField("dfb");
+                dfbField.setAccessible(true);
+            }
+            Object dfb = dfbField.get(null);
+
+            if (dfb != null) {
+                if (dfbGlFramebufferField == null) {
+                    dfbGlFramebufferField = dfb.getClass().getDeclaredField("glFramebuffer");
+                    dfbGlFramebufferField.setAccessible(true);
+                }
+                return (int) dfbGlFramebufferField.get(dfb);
+            }
+        } catch (Exception e) {
+            CullingStateManager.LOGGER.error("OptiFine reflection failed", e);
         }
 
         return Minecraft.getInstance().getMainRenderTarget().frameBufferId;
@@ -31,14 +41,14 @@ public class OptiFineLoaderImpl implements ShaderLoader {
     @Override
     public boolean renderingShaderPass() {
         try {
-            assert CullingStateManager.OptiFine != null;
-            Field field = CullingStateManager.OptiFine.getDeclaredField("shaderPackLoaded");
-            field.setAccessible(true);
-            return (Boolean) field.get(null);
-        } catch (NoSuchFieldException | IllegalAccessException e) {
-            e.fillInStackTrace();
+            if (shaderPackLoadedField == null) {
+                shaderPackLoadedField = CullingStateManager.OptiFine.getDeclaredField("shaderPackLoaded");
+                shaderPackLoadedField.setAccessible(true);
+            }
+            return (Boolean) shaderPackLoadedField.get(null);
+        } catch (Exception e) {
+            return false;
         }
-        return false;
     }
 
     @Override
@@ -56,16 +66,25 @@ public class OptiFineLoaderImpl implements ShaderLoader {
             }
         }
         try {
-            Field field = glState.getDeclaredField("activeFramebuffer");
-            field.setAccessible(true);
-            Object buffer = field.get(null);
-            Field glFramebuffer = buffer.getClass().getDeclaredField("glFramebuffer");
-            glFramebuffer.setAccessible(true);
-            GlStateManager._glBindFramebuffer(36160, (int) glFramebuffer.get(buffer));
-            GlStateManager._viewport(0, 0, Minecraft.getInstance().getMainRenderTarget().viewWidth, Minecraft.getInstance().getMainRenderTarget().viewHeight);
-            return;
-        } catch (NoSuchFieldException | IllegalAccessException e) {
-            e.fillInStackTrace();
+            if (glState != null) {
+                if (activeFramebufferField == null) {
+                    activeFramebufferField = glState.getDeclaredField("activeFramebuffer");
+                    activeFramebufferField.setAccessible(true);
+                }
+                Object buffer = activeFramebufferField.get(null);
+
+                if (buffer != null) {
+                    if (stateGlFramebufferField == null) {
+                        stateGlFramebufferField = buffer.getClass().getDeclaredField("glFramebuffer");
+                        stateGlFramebufferField.setAccessible(true);
+                    }
+                    GlStateManager._glBindFramebuffer(36160, (int) stateGlFramebufferField.get(buffer));
+                    GlStateManager._viewport(0, 0, Minecraft.getInstance().getMainRenderTarget().viewWidth, Minecraft.getInstance().getMainRenderTarget().viewHeight);
+                    return;
+                }
+            }
+        } catch (Exception e) {
+            CullingStateManager.LOGGER.error("OptiFine bind failed", e);
         }
         Minecraft.getInstance().getMainRenderTarget().bindWrite(true);
     }

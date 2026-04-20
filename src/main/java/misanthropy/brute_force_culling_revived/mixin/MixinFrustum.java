@@ -7,6 +7,7 @@ import net.minecraft.client.renderer.culling.Frustum;
 import net.minecraft.world.phys.AABB;
 import org.jetbrains.annotations.NotNull;
 import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
@@ -14,9 +15,22 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 @Mixin(Frustum.class)
 public abstract class MixinFrustum {
 
+    @Unique
+    private static final ThreadLocal<DummySection> DUMMY_SECTION = ThreadLocal.withInitial(DummySection::new);
+
     @Inject(method = "isVisible", at = @At(value = "RETURN"), cancellable = true)
     public void afterVisible(@NotNull AABB aabb, @NotNull CallbackInfoReturnable<Boolean> cir) {
-        if (CullingStateManager.applyFrustum && Config.shouldCullChunk() && cir.getReturnValue() && !CullingStateManager.shouldRenderChunk(new DummySection(aabb), true))
-            cir.setReturnValue(false);
+        if (CullingStateManager.applyFrustum && Config.shouldCullChunk() && cir.getReturnValue()) {
+            DummySection section = DUMMY_SECTION.get();
+            section.set(
+                    (int) (aabb.minX + (aabb.maxX - aabb.minX) * 0.5D),
+                    (int) (aabb.minY + (aabb.maxY - aabb.minY) * 0.5D),
+                    (int) (aabb.minZ + (aabb.maxZ - aabb.minZ) * 0.5D)
+            );
+
+            if (!CullingStateManager.shouldRenderChunk(section, true)) {
+                cir.setReturnValue(false);
+            }
+        }
     }
 }

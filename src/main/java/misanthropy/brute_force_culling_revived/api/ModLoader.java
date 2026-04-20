@@ -50,6 +50,11 @@ import static misanthropy.brute_force_culling_revived.api.CullingStateManager.*;
 
 @Mod("brute_force_culling_revived")
 public class ModLoader {
+    private static Field frustumPlanesField;
+    private static Boolean hasSodiumCache;
+    private static Boolean hasIrisCache;
+    private static Boolean hasNvidiumCache;
+
     public ModLoader() {
         DistExecutor.unsafeRunWhenOn(Dist.CLIENT, () -> () -> {
             registerShader();
@@ -175,11 +180,13 @@ public class ModLoader {
 
     public static Vector4f[] getFrustumPlanes(FrustumIntersection frustum) {
         try {
-            Field f = FrustumIntersection.class.getDeclaredField("planes");
-            f.setAccessible(true);
-            return (Vector4f[]) f.get(frustum);
+            if (frustumPlanesField == null) {
+                frustumPlanesField = FrustumIntersection.class.getDeclaredField("planes");
+                frustumPlanesField.setAccessible(true);
+            }
+            return (Vector4f[]) frustumPlanesField.get(frustum);
         } catch (NoSuchFieldException | IllegalAccessException e) {
-            e.fillInStackTrace();
+            LOGGER.error("Failed to get frustum planes", e);
         }
 
         return new Vector4f[6];
@@ -190,15 +197,24 @@ public class ModLoader {
     }
 
     public static boolean hasSodium() {
-        return FMLLoader.getLoadingModList().getMods().stream().anyMatch(modInfo -> modInfo.getModId().equals("sodium") || modInfo.getModId().equals("embeddium"));
+        if (hasSodiumCache == null) {
+            hasSodiumCache = FMLLoader.getLoadingModList().getMods().stream().anyMatch(modInfo -> modInfo.getModId().equals("sodium") || modInfo.getModId().equals("embeddium"));
+        }
+        return hasSodiumCache;
     }
 
     public static boolean hasIris() {
-        return FMLLoader.getLoadingModList().getMods().stream().anyMatch(modInfo -> modInfo.getModId().equals("iris") || modInfo.getModId().equals("oculus"));
+        if (hasIrisCache == null) {
+            hasIrisCache = FMLLoader.getLoadingModList().getMods().stream().anyMatch(modInfo -> modInfo.getModId().equals("iris") || modInfo.getModId().equals("oculus"));
+        }
+        return hasIrisCache;
     }
 
     public static boolean hasNvidium() {
-        return FMLLoader.getLoadingModList().getMods().stream().anyMatch(modInfo -> modInfo.getModId().equals("nvidium")) && NvidiumUtil.nvidiumBfs();
+        if (hasNvidiumCache == null) {
+            hasNvidiumCache = FMLLoader.getLoadingModList().getMods().stream().anyMatch(modInfo -> modInfo.getModId().equals("nvidium")) && NvidiumUtil.nvidiumBfs();
+        }
+        return hasNvidiumCache;
     }
 
     public static @Nullable AABB getObjectAABB(Object o) {

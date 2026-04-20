@@ -18,14 +18,20 @@ public class LifeTimer<T> {
     }
 
     public void tick(int clientTick, int count) {
+        boolean removedAny = false;
         Iterator<Map.Entry<T, Integer>> iterator = usageTick.entrySet().iterator();
         while (iterator.hasNext()) {
             Map.Entry<T, Integer> entry = iterator.next();
             int tick = entry.getValue();
             if (clientTick - tick > count) {
                 iterator.remove();
-                list.remove(entry.getKey());
+                removedAny = true;
             }
+        }
+
+        if (removedAny) {
+            list.clear();
+            list.addAll(usageTick.keySet());
         }
     }
 
@@ -53,4 +59,3 @@ public class LifeTimer<T> {
         list.forEach(consumer);
     }
 }
-

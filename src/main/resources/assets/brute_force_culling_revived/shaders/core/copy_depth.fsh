@@ -3,7 +3,7 @@
 uniform sampler2D Sampler0;
 uniform float RenderDistance;
 
-flat in  vec2 DepthScreenSize;
+flat in vec2 DepthScreenSize;
 flat in float xStep;
 flat in float yStep;
 
@@ -20,20 +20,23 @@ float LinearizeDepth(float depth) {
 void main() {
     float minX = gl_FragCoord.x / DepthScreenSize.x;
     float minY = gl_FragCoord.y / DepthScreenSize.y;
-    float maxX = min(gl_FragCoord.x+1, DepthScreenSize.x)/DepthScreenSize.x;
-    float maxY = min(gl_FragCoord.y+1, DepthScreenSize.y)/DepthScreenSize.y;
-    float depth;
+    float maxX = min(gl_FragCoord.x + 1.0, DepthScreenSize.x) / DepthScreenSize.x;
+    float maxY = min(gl_FragCoord.y + 1.0, DepthScreenSize.y) / DepthScreenSize.y;
 
-    for(float x = minX-xStep; x <= maxX+xStep; x+=xStep) {
-        for(float y = minY-xStep; y <= maxY+xStep; y+=yStep) {
+    // FIXED: Must initialize to 0.0 or the GPU reads random garbage memory!
+    float depth = 0.0;
+
+    for (float x = minX - xStep; x <= maxX + xStep; x += xStep) {
+        // FIXED: Using yStep for the Y-bounds instead of xStep
+        for (float y = minY - yStep; y <= maxY + yStep; y += yStep) {
             vec2 depthUV = vec2(min(x, 1.0), min(y, 1.0));
             depth = max(depth, texture(Sampler0, depthUV).r);
         }
     }
 
-    if(RenderDistance > 1) {
+    if (RenderDistance > 1.0) {
         fragColor = vec4(vec3(depth), 1.0);
     } else {
-        fragColor = vec4(vec3(LinearizeDepth(depth)/500.0), 1.0);
+        fragColor = vec4(vec3(LinearizeDepth(depth) / 500.0), 1.0);
     }
 }

@@ -8,7 +8,7 @@ import org.jetbrains.annotations.Nullable;
 
 public interface IEntitiesForRender {
     ObjectArrayList<?> bruteForceRenderingRevived$renderChunksInFrustum();
-    ChunkRenderDispatcher.@Nullable RenderChunk bruteForceRenderingRevived$invokeGetRelativeFrom(BlockPos pos, ChunkRenderDispatcher.RenderChunk chunk, Direction dir);
+    ChunkRenderDispatcher.@Nullable @org.jspecify.annotations.Nullable RenderChunk bruteForceRenderingRevived$invokeGetRelativeFrom(BlockPos pos, ChunkRenderDispatcher.RenderChunk chunk, Direction dir);
     ChunkRenderDispatcher.RenderChunk bruteForceRenderingRevived$invokeGetRenderChunkAt(BlockPos pos);
 
 }

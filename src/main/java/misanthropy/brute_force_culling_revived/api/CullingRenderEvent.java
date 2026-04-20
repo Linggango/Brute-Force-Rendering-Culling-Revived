@@ -116,20 +116,20 @@ public class CullingRenderEvent {
             shaderInstance.bruteForceRenderingRevived$getCullingProjMat().set(CullingStateManager.PROJECTION_MATRIX);
         }
         if (shaderInstance.bruteForceRenderingRevived$getCullingFrustum() != null) {
-            Vector4f[] frustumData = ModLoader.getFrustumPlanes(((AccessorFrustum) CullingStateManager.FRUSTUM).frustumIntersection());
-            List<Float> data = new ArrayList<>();
-            for (Vector4f frustumDatum : frustumData) {
-                data.add(frustumDatum.x());
-                data.add(frustumDatum.y());
-                data.add(frustumDatum.z());
-                data.add(frustumDatum.w());
-            }
-            float[] array = new float[data.size()];
-            for (int i = 0; i < data.size(); i++) {
-                array[i] = data.get(i);
+            Vector4f[] frustumData = ModLoader.getFrustumPlanes(
+                    ((AccessorFrustum) CullingStateManager.FRUSTUM).frustumIntersection()
+            );
+            float[] array = new float[frustumData.length * 4];
+            for (int i = 0; i < frustumData.length; i++) {
+                Vector4f vec = frustumData[i];
+                array[i * 4]     = vec.x();
+                array[i * 4 + 1] = vec.y();
+                array[i * 4 + 2] = vec.z();
+                array[i * 4 + 3] = vec.w();
             }
             shaderInstance.bruteForceRenderingRevived$getCullingFrustum().set(array);
         }
+
         if (shaderInstance.bruteForceRenderingRevived$getRenderDistance() != null) {
             float distance = Minecraft.getInstance().options.getEffectiveRenderDistance();
             if (shader == CullingStateManager.COPY_DEPTH_SHADER) {
