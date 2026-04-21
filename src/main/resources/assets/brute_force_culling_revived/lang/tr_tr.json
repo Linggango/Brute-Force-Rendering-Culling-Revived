@@ -1,0 +1,43 @@
+{
+  "key.category.brute_force_culling_revived": "Brute Force Rendering Culling Revived",
+  "brute_force_culling_revived.key.config": "Ayarlar Menüsü",
+  "brute_force_culling_revived.key.debug": "Hata Ayıklama Arayüzü",
+
+  "brute_force_culling_revived.cull_entity": "Varlık Kesmeyi Aç",
+  "brute_force_culling_revived.cull_block_entity": "Blok Varlık Kesmeyi Aç",
+  "brute_force_culling_revived.cull_chunk": "Chunk Kesmeyi Aç",
+  "brute_force_culling_revived.async": "Asenkron Chunk Yeniden İnşa",
+  "brute_force_culling_revived.auto_shader_async": "Shader Güvenlik Koruması",
+  "brute_force_culling_revived.sampler": "Derinlik Örnekleme Oranı",
+  "brute_force_culling_revived.culling_map_update_delay": "Kesme Haritası Güncelleme Gecikmesi",
+
+  "brute_force_culling_revived.entity_culling": "Kesilen Varlıklar",
+  "brute_force_culling_revived.block_culling": "Kesilen Blok Varlıkları",
+  "brute_force_culling_revived.entity_culling_time": "Varlık Kesme Süresi",
+  "brute_force_culling_revived.block_culling_time": "Blok Varlığı Kesme Süresi",
+  "brute_force_culling_revived.entity_culling_init": "Varlık Kesme Haritası Başlatma Maliyeti",
+  "brute_force_culling_revived.chunk_culling_init": "Chunk Kesme Haritası Başlatma Maliyeti",
+
+  "brute_force_culling_revived.chunk_culling": "Kesilen Chunklar",
+  "brute_force_culling_revived.chunk_culling_time": "Chunk Kesme Süresi",
+  "brute_force_culling_revived.chunk_update_count": "Asenkron Chunk Güncelleme Sayısı",
+
+  "brute_force_culling_revived.enable": "Etkinleştir",
+  "brute_force_culling_revived.disable": "Devre Dışı Bırak",
+
+  "brute_force_culling_revived.detail.cull_entity": "Oyuncuya görünmeyen varlıkları kaldırarak performansı artırır.",
+  "brute_force_culling_revived.detail.cull_block_entity": "Oyuncuya görünmeyen blok varlıklarını kaldırarak performansı artırır.",
+  "brute_force_culling_revived.detail.cull_chunk": "Tamamen görünmeyen chunkların render edilmesini engeller.",
+  "brute_force_culling_revived.detail.async": "Görünür chunkları ayrı bir iş parçacığında asenkron olarak günceller ve ana render iş parçacığı ile senkronize eder. Hareket sırasında chunk oluşturmayı hızlandırır ve FPS değerini artırır. Uyarı: Senkronizasyon gecikmeye neden olabilir, hızlı kamera dönüşlerinde kenar chunkların yüklenmesi yavaşlayabilir. Oyun ayarlarında çoklu iş parçacığı ile yüklenen chunk sayısını artırarak bu özelliği destekleyebilirsiniz. Bu özellik test aşamasındadır. Chunk yükleme sırasında çökme yaşarsanız devre dışı bırakın.",
+  "brute_force_culling_revived.detail.sampler": "Kesme için kullanılan derinlik dokusunun ölçekleme oranını belirler. Daha yüksek oran daha hassas kesme ve daha iyi görsel sonuç sağlar. FPS düşmüyorsa oranı artırabilirsiniz. 20% altına düşürülmesi önerilmez.",
+  "brute_force_culling_revived.detail.culling_map_update_delay": "Kesme dokusunun CPU’ya aktarılmadan önce geciktirildiği kare sayısını belirler. Bu, eksik veri aktarımından kaynaklanan takılmaları önler. Değer yükseldikçe kesme hızı yavaşlar. Hata ayıklama için güncelleme süresini gözlemleyebilirsiniz. Shaderlar açıkken veri aktarımı yavaşlar ve gecikme otomatik olarak 1 kare artar.",
+  "brute_force_culling_revived.detail.check_texture": "Test seçeneği. Veri izleme paneli açıkken derinlik ve kesme dokularının doğru çalışıp çalışmadığını kontrol eder.",
+  "brute_force_culling_revived.detail.debug": "Test seçeneği. Sadece vanilla Minecraft’ta etkilidir ve hangi chunkların kesildiğini gösterir.",
+  "brute_force_culling_revived.detail.nvidium": "Uyarı: Nvidium modunun Async BFS özelliği ile uyumsuzdur.",
+  "brute_force_culling_revived.detail.auto_shader_async": "Bazı cihazlarda shaderlar ile asenkron chunk yeniden inşası aynı anda kullanıldığında çökme olabilir. Bu ayar shaderlar açıkken asenkron chunk yeniden inşasını otomatik olarak kapatır.",
+  "brute_force_culling_revived.detail.sodium": "Uyarı: Bu özellik için Sodium veya Embeddium gerekir.",
+  "brute_force_culling_revived.detail.gl33": "Uyarı: OpenGL 3.3 desteği gereklidir.",
+
+  "brute_force_culling_revived.skip_culling_entities": "Kesmeden hariç tutulan varlıklar",
+  "brute_force_culling_revived.skip_culling_block_entities": "Kesmeden hariç tutulan blok varlıkları"
+}

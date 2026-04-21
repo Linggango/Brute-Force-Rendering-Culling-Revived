@@ -1,0 +1,43 @@
+{
+  "key.category.brute_force_culling_revived": "Brute Force Rendering Culling Revived",
+  "brute_force_culling_revived.key.config": "Menu de configuration",
+  "brute_force_culling_revived.key.debug": "Interface de débogage",
+
+  "brute_force_culling_revived.cull_entity": "Culling des entités",
+  "brute_force_culling_revived.cull_block_entity": "Culling des entités de bloc",
+  "brute_force_culling_revived.cull_chunk": "Culling des chunks",
+  "brute_force_culling_revived.async": "Reconstruction asynchrone des chunks",
+  "brute_force_culling_revived.auto_shader_async": "Protection automatique avec shaders",
+  "brute_force_culling_revived.sampler": "Taux d’échantillonnage de profondeur",
+  "brute_force_culling_revived.culling_map_update_delay": "Délai de mise à jour de la carte de culling",
+
+  "brute_force_culling_revived.entity_culling": "Entités supprimées par culling",
+  "brute_force_culling_revived.block_culling": "Entités de bloc supprimées par culling",
+  "brute_force_culling_revived.entity_culling_time": "Temps de traitement des entités",
+  "brute_force_culling_revived.block_culling_time": "Temps de traitement des entités de bloc",
+  "brute_force_culling_revived.entity_culling_init": "Coût d’initialisation de la carte des entités",
+  "brute_force_culling_revived.chunk_culling_init": "Coût d’initialisation de la carte des chunks",
+
+  "brute_force_culling_revived.chunk_culling": "Chunks supprimés par culling",
+  "brute_force_culling_revived.chunk_culling_time": "Temps de traitement des chunks",
+  "brute_force_culling_revived.chunk_update_count": "Nombre de mises à jour asynchrones des chunks",
+
+  "brute_force_culling_revived.enable": "Activer",
+  "brute_force_culling_revived.disable": "Désactiver",
+
+  "brute_force_culling_revived.detail.cull_entity": "Supprime les entités invisibles pour le joueur afin de réduire la charge de rendu.",
+  "brute_force_culling_revived.detail.cull_block_entity": "Supprime les entités de bloc invisibles afin d’améliorer les performances.",
+  "brute_force_culling_revived.detail.cull_chunk": "Ignore le rendu des chunks complètement invisibles pour le joueur.",
+  "brute_force_culling_revived.detail.async": "Utilise un thread séparé pour mettre à jour les chunks visibles de manière asynchrone et les synchroniser avec le thread principal de rendu. Cela accélère la génération des chunks pendant les déplacements et améliore les FPS. Avertissement : la synchronisation peut provoquer des retards, ce qui ralentit le chargement des chunks en bord d’écran lors de rotations rapides de la caméra. Vous pouvez augmenter le nombre de chunks traités en parallèle dans les paramètres du jeu pour aider. Cette fonction est expérimentale. Si des plantages surviennent lors du chargement des chunks, désactivez cette option.",
+  "brute_force_culling_revived.detail.sampler": "Définit le ratio de mise à l’échelle de la texture de profondeur utilisée pour le culling. Un ratio plus élevé donne des résultats plus précis et une meilleure qualité visuelle. Si les FPS ne sont pas affectés, vous pouvez l’augmenter. Il n’est pas recommandé de descendre en dessous de 20%.",
+  "brute_force_culling_revived.detail.culling_map_update_delay": "Nombre d’images de retard avant que la texture de culling soit mise à jour sur le CPU. Cela évite les saccades dues à une transmission de données incomplète. Plus la valeur est élevée, plus le culling est lent. Vous pouvez observer le temps de mise à jour pour le débogage. Avec les shaders activés, la transmission des données est ralentie et le délai augmente automatiquement d’une image.",
+  "brute_force_culling_revived.detail.check_texture": "Option de test. Permet de vérifier si les textures de profondeur et de culling fonctionnent correctement lorsque le panneau de surveillance est ouvert.",
+  "brute_force_culling_revived.detail.debug": "Option de test. Fonctionne uniquement dans Minecraft vanilla et montre quels chunks ont été supprimés par culling.",
+  "brute_force_culling_revived.detail.nvidium": "Avertissement : incompatible avec la fonction Async BFS du mod Nvidium.",
+  "brute_force_culling_revived.detail.auto_shader_async": "Sur certains appareils, l’utilisation simultanée des shaders et de la reconstruction asynchrone des chunks peut provoquer des plantages. Cette option désactive automatiquement la reconstruction asynchrone lorsque les shaders sont activés.",
+  "brute_force_culling_revived.detail.sodium": "Avertissement : nécessite Sodium ou Embeddium.",
+  "brute_force_culling_revived.detail.gl33": "Avertissement : nécessite la prise en charge d’OpenGL 3.3.",
+
+  "brute_force_culling_revived.skip_culling_entities": "Entités exclues du culling",
+  "brute_force_culling_revived.skip_culling_block_entities": "Entités de bloc exclues du culling"
+}

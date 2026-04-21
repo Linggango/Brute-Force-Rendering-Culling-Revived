@@ -1,0 +1,43 @@
+{
+  "key.category.brute_force_culling_revived": "Brute Force Rendering Culling Revived",
+  "brute_force_culling_revived.key.config": "Einstellungsmenü",
+  "brute_force_culling_revived.key.debug": "Debug-Oberfläche",
+
+  "brute_force_culling_revived.cull_entity": "Entity-Culling",
+  "brute_force_culling_revived.cull_block_entity": "Block-Entity-Culling",
+  "brute_force_culling_revived.cull_chunk": "Chunk-Culling",
+  "brute_force_culling_revived.async": "Asynchrone Chunk-Neuberechnung",
+  "brute_force_culling_revived.auto_shader_async": "Automatischer Shader-Schutz",
+  "brute_force_culling_revived.sampler": "Tiefen-Sampling-Verhältnis",
+  "brute_force_culling_revived.culling_map_update_delay": "Verzögerung beim Aktualisieren der Culling-Map",
+
+  "brute_force_culling_revived.entity_culling": "Durch Culling entfernte Entities",
+  "brute_force_culling_revived.block_culling": "Durch Culling entfernte Block-Entities",
+  "brute_force_culling_revived.entity_culling_time": "Verarbeitungszeit für Entities",
+  "brute_force_culling_revived.block_culling_time": "Verarbeitungszeit für Block-Entities",
+  "brute_force_culling_revived.entity_culling_init": "Initialisierungskosten der Entity-Culling-Map",
+  "brute_force_culling_revived.chunk_culling_init": "Initialisierungskosten der Chunk-Culling-Map",
+
+  "brute_force_culling_revived.chunk_culling": "Durch Culling entfernte Chunks",
+  "brute_force_culling_revived.chunk_culling_time": "Verarbeitungszeit für Chunks",
+  "brute_force_culling_revived.chunk_update_count": "Anzahl asynchroner Chunk-Updates",
+
+  "brute_force_culling_revived.enable": "Aktivieren",
+  "brute_force_culling_revived.disable": "Deaktivieren",
+
+  "brute_force_culling_revived.detail.cull_entity": "Entfernt Entities, die für den Spieler unsichtbar sind, um die Renderlast zu verringern.",
+  "brute_force_culling_revived.detail.cull_block_entity": "Entfernt Block-Entities, die nicht sichtbar sind, um die Leistung zu verbessern.",
+  "brute_force_culling_revived.detail.cull_chunk": "Überspringt das Rendern von Chunks, die vollständig unsichtbar sind.",
+  "brute_force_culling_revived.detail.async": "Verwendet einen separaten Thread, um sichtbare Chunks asynchron zu aktualisieren und mit dem Haupt-Rendering-Thread zu synchronisieren. Dies beschleunigt die Chunk-Erzeugung während der Bewegung und verbessert die FPS. Warnung: Die Synchronisierung kann Verzögerungen verursachen, wodurch Rand-Chunks beim schnellen Drehen der Kamera langsamer geladen werden. In den Spieleinstellungen kann die Anzahl parallel geladener Chunks erhöht werden. Diese Funktion ist experimentell. Falls Abstürze beim Laden auftreten, deaktivieren Sie diese Option.",
+  "brute_force_culling_revived.detail.sampler": "Legt das Skalierungsverhältnis der Tiefentextur für das Culling fest. Ein höheres Verhältnis sorgt für präzisere Ergebnisse und bessere visuelle Qualität. Wenn die FPS nicht beeinträchtigt werden, kann der Wert erhöht werden. Unter 20% wird nicht empfohlen.",
+  "brute_force_culling_revived.detail.culling_map_update_delay": "Anzahl der Frames, die verzögert werden, bevor die Culling-Textur auf der CPU aktualisiert wird. Dies verhindert Ruckler durch unvollständige Datenübertragung. Je höher der Wert, desto langsamer das Culling. Zur Fehleranalyse kann die Aktualisierungszeit beobachtet werden. Mit aktivierten Shadern wird die Datenübertragung langsamer und die Verzögerung automatisch um 1 Frame erhöht.",
+  "brute_force_culling_revived.detail.check_texture": "Testoption. Ermöglicht die Überprüfung, ob Tiefen- und Culling-Texturen korrekt funktionieren, wenn das Monitoring-Panel geöffnet ist.",
+  "brute_force_culling_revived.detail.debug": "Testoption. Funktioniert nur im Vanilla-Minecraft und zeigt, welche Chunks durch Culling entfernt wurden.",
+  "brute_force_culling_revived.detail.nvidium": "Warnung: Nicht kompatibel mit der Async BFS-Funktion von Nvidium.",
+  "brute_force_culling_revived.detail.auto_shader_async": "Auf manchen Geräten kann die gleichzeitige Nutzung von Shadern und asynchroner Chunk-Neuberechnung Abstürze verursachen. Diese Einstellung deaktiviert die asynchrone Neuberechnung automatisch, wenn Shader aktiviert sind.",
+  "brute_force_culling_revived.detail.sodium": "Warnung: Erfordert Sodium oder Embeddium.",
+  "brute_force_culling_revived.detail.gl33": "Warnung: OpenGL 3.3-Unterstützung erforderlich.",
+
+  "brute_force_culling_revived.skip_culling_entities": "Entities vom Culling ausgeschlossen",
+  "brute_force_culling_revived.skip_culling_block_entities": "Block-Entities vom Culling ausgeschlossen"
+}
