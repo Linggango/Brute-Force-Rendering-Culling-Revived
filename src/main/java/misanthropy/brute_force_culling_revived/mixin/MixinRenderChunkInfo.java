@@ -19,12 +19,4 @@ public class MixinRenderChunkInfo implements IRenderChunkInfo {
         return chunk;
     }
 
-    @Shadow
-    @Final
-    int step;
-
-    @Override
-    public int bruteForceRenderingRevived$getStep() {
-        return this.step;
-    }
 }

@@ -11,21 +11,18 @@ public class EntityUpdateVertex extends VertexAttrib {
     public EntityUpdateVertex(int index) {
         super (
                 GLFloatVertex.createF1(index, "index"),
-                GLFloatVertex.createF2(index+1, "Size"),
-                GLFloatVertex.createF3(index+2, "EntityCenter")
+                GLFloatVertex.createF2(index + 1, "Size"),
+                GLFloatVertex.createF3(index + 2, "EntityCenter")
         );
     }
 
     public void addAttrib(@NotNull Consumer<FloatBuffer> bufferConsumer) {
-        try {
-            bufferConsumer.accept(this.buffer);
-        } catch (Exception e) {
-            this.buffer.position(0);
-        }
+        bufferConsumer.accept(this.buffer);
     }
 
     @Override
-    public void init(Consumer<FloatBuffer> bufferConsumer) {}
+    public void init(Consumer<FloatBuffer> bufferConsumer) {
+    }
 
     @Override
     public boolean needUpdate() {

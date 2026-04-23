@@ -6,14 +6,23 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.function.BiConsumer;
 
+/**
+ * A collection that provides O(1) containment checks while maintaining insertion order.
+ * Note: Removal is O(n) due to ArrayList shifting.
+ */
 @SuppressWarnings("unused")
 public class IndexedSet<E> {
     private final @NotNull ArrayList<E> list;
     private final @NotNull HashSet<E> set;
 
     public IndexedSet() {
-        list = new ArrayList<>();
-        set = new HashSet<>();
+        this.list = new ArrayList<>();
+        this.set = new HashSet<>();
+    }
+
+    public IndexedSet(int initialCapacity) {
+        this.list = new ArrayList<>(initialCapacity);
+        this.set = new HashSet<>(initialCapacity);
     }
 
     public boolean add(E element) {
@@ -24,6 +33,10 @@ public class IndexedSet<E> {
         return false;
     }
 
+    /**
+     * Warning: This is an O(n) operation.
+     * If frequent removals are needed, consider a different data structure.
+     */
     public boolean remove(E element) {
         if (set.remove(element)) {
             list.remove(element);
@@ -32,8 +45,13 @@ public class IndexedSet<E> {
         return false;
     }
 
+    /**
+     * Standard for-each loop iteration is usually faster than this BiConsumer
+     * in hot paths due to avoiding lambda object overhead.
+     */
     public void forEach(@NotNull BiConsumer<? super E, Integer> action) {
-        for (int i = 0; i < list.size(); ++i) {
+        int size = list.size();
+        for (int i = 0; i < size; ++i) {
             action.accept(list.get(i), i);
         }
     }

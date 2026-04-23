@@ -15,17 +15,20 @@ public class IrisLoaderImpl implements ShaderLoader {
 
     @Override
     public int getFrameBufferID() {
-        if (Iris.getPipelineManager().getPipeline().isPresent()) {
-            WorldRenderingPipeline pipeline = Iris.getPipelineManager().getPipeline().get();
+        var pipelineOptional = Iris.getPipelineManager().getPipeline();
+        if (pipelineOptional.isPresent()) {
+            WorldRenderingPipeline pipeline = pipelineOptional.get();
             try {
-                if (pipeline instanceof IrisRenderingPipeline) {
+                if (pipeline instanceof IrisRenderingPipeline irisPipeline) {
                     if (sodiumTerrainPipelineField == null) {
                         sodiumTerrainPipelineField = IrisRenderingPipeline.class.getDeclaredField("sodiumTerrainPipeline");
                         sodiumTerrainPipelineField.setAccessible(true);
                     }
-                    SodiumTerrainPipeline sodiumTerrainPipeline = (SodiumTerrainPipeline) sodiumTerrainPipelineField.get(pipeline);
-                    GlFramebuffer glFramebuffer = sodiumTerrainPipeline.getTerrainSolidFramebuffer();
-                    return glFramebuffer.getId();
+                    SodiumTerrainPipeline sodiumTerrainPipeline = (SodiumTerrainPipeline) sodiumTerrainPipelineField.get(irisPipeline);
+                    if (sodiumTerrainPipeline != null) {
+                        GlFramebuffer glFramebuffer = sodiumTerrainPipeline.getTerrainSolidFramebuffer();
+                        return glFramebuffer.getId();
+                    }
                 }
             } catch (NoSuchFieldException | IllegalAccessException ignored) {
             }

@@ -14,4 +14,3 @@ public interface AccessorRenderSectionManager {
     @Invoker(value = "shouldUseOcclusionCulling", remap = false)
     boolean invokeShouldUseOcclusionCulling(Camera camera, boolean spectator);
 }
-

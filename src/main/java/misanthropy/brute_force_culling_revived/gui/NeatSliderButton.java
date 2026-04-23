@@ -10,7 +10,6 @@ import net.minecraft.client.gui.components.AbstractOptionSliderButton;
 import net.minecraft.client.renderer.GameRenderer;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
-import net.minecraft.util.Mth;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -19,20 +18,16 @@ import java.util.function.Function;
 import java.util.function.Supplier;
 
 public class NeatSliderButton extends AbstractOptionSliderButton {
-    private final @NotNull Function<NeatSliderButton, Component> name;
+    private final @NotNull Function<NeatSliderButton, Component> nameFunc;
     private final @NotNull Consumer<Double> applyValue;
     private Supplier<Component> detailMessage;
     private Supplier<Integer> textWidth;
 
-    protected NeatSliderButton(int p_93380_, int p_93381_, int p_93382_, int p_93383_, @NotNull Supplier<Double> getter, @NotNull Function<Double, Double> setter, @NotNull Function<Double, String> display, @NotNull Supplier<MutableComponent> name) {
-        super(Minecraft.getInstance().options, p_93380_, p_93381_, p_93382_, p_93383_, getter.get());
-        this.name = (sliderButton) -> name.get().append(": ").append(Component.literal(display.apply(this.value)));
+    protected NeatSliderButton(int x, int y, int w, int h, @NotNull Supplier<Double> getter, @NotNull Function<Double, Double> setter, @NotNull Function<Double, String> display, @NotNull Supplier<MutableComponent> name) {
+        super(Minecraft.getInstance().options, x, y, w, h, getter.get());
+        this.nameFunc = (slider) -> name.get().append(": ").append(Component.literal(display.apply(this.value)));
+        this.applyValue = (val) -> this.value = setter.apply(val);
         updateMessage();
-        this.applyValue = (value) -> this.value = setter.apply(value);
-    }
-
-    public double getValue() {
-        return this.value;
     }
 
     public void setDetailMessage(Supplier<Component> detailMessage) {
@@ -45,7 +40,7 @@ public class NeatSliderButton extends AbstractOptionSliderButton {
 
     @Override
     public void updateMessage() {
-        this.setMessage(name.apply(this));
+        this.setMessage(nameFunc.apply(this));
     }
 
     @Override
@@ -54,51 +49,55 @@ public class NeatSliderButton extends AbstractOptionSliderButton {
     }
 
     @Override
-    public void renderWidget(@NotNull GuiGraphics guiGraphics, int p_93677_, int p_93678_, float p_93679_) {
+    public void renderWidget(@NotNull GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTicks) {
         Minecraft minecraft = Minecraft.getInstance();
-        this.width = this.textWidth.get();
+        if (this.textWidth != null) {
+            this.width = this.textWidth.get();
+        }
         this.setX(minecraft.getWindow().getGuiScaledWidth() / 2 - width / 2);
+
         Font font = minecraft.font;
-        int j = this.active ? 16777215 : 10526880;
-        guiGraphics.drawCenteredString(font, this.getMessage(), this.getX() + this.width / 2, this.getY() + (this.height - 8) / 2, j | Mth.ceil(this.alpha * 255.0F) << 24);
-        RenderSystem.setShaderColor(1.0F, 1.0F, 1.0F, 1.0f);
+        int textColor = this.active ? 0xFFFFFF : 0xA0A0A0;
+
+        guiGraphics.flush();
+        RenderSystem.disableDepthTest();
         RenderSystem.enableBlend();
-        RenderSystem.blendFunc(GlStateManager.SourceFactor.ONE_MINUS_DST_COLOR, GlStateManager.DestFactor.ZERO);
         RenderSystem.setShader(GameRenderer::getPositionColorShader);
-        BufferBuilder bufferbuilder = Tesselator.getInstance().getBuilder();
-        bufferbuilder.begin(VertexFormat.Mode.QUADS, DefaultVertexFormat.POSITION_COLOR);
+        RenderSystem.blendFunc(GlStateManager.SourceFactor.ONE_MINUS_DST_COLOR, GlStateManager.DestFactor.ZERO);
+
+        Tesselator tesselator = Tesselator.getInstance();
+        BufferBuilder buffer = tesselator.getBuilder();
+        buffer.begin(VertexFormat.Mode.QUADS, DefaultVertexFormat.POSITION_COLOR);
+
         float color = this.isHovered() ? 1.0f : 0.8f;
-        bufferbuilder.vertex(this.getX(), this.getY() + height, 0.0D).color(color, color, color, 1.0f).endVertex();
-        bufferbuilder.vertex(this.getX() + width, this.getY() + height, 0.0D).color(color, color, color, 1.0f).endVertex();
-        bufferbuilder.vertex(this.getX() + width, this.getY(), 0.0D).color(color, color, color, 1.0f).endVertex();
-        bufferbuilder.vertex(this.getX(), this.getY(), 0.0D).color(color, color, color, 1.0f).endVertex();
+        buffer.vertex(this.getX(), this.getY() + height, 0.0D).color(color, color, color, 1.0f).endVertex();
+        buffer.vertex(this.getX() + width, this.getY() + height, 0.0D).color(color, color, color, 1.0f).endVertex();
+        buffer.vertex(this.getX() + width, this.getY(), 0.0D).color(color, color, color, 1.0f).endVertex();
+        buffer.vertex(this.getX(), this.getY(), 0.0D).color(color, color, color, 1.0f).endVertex();
 
-        color = 0.7f;
-        bufferbuilder.vertex(this.getX() - 1, this.getY() + height + 1, 0.0D).color(color, color, color, 1.0f).endVertex();
-        bufferbuilder.vertex(this.getX() + width + 1, this.getY() + height + 1, 0.0D).color(color, color, color, 1.0f).endVertex();
-        bufferbuilder.vertex(this.getX() + width + 1, this.getY() - 1, 0.0D).color(color, color, color, 1.0f).endVertex();
-        bufferbuilder.vertex(this.getX() - 1, this.getY() - 1, 0.0D).color(color, color, color, 1.0f).endVertex();
+        float borderColor = 0.7f;
+        buffer.vertex(this.getX() - 1, this.getY() + height + 1, 0.0D).color(borderColor, borderColor, borderColor, 1.0f).endVertex();
+        buffer.vertex(this.getX() + width + 1, this.getY() + height + 1, 0.0D).color(borderColor, borderColor, borderColor, 1.0f).endVertex();
+        buffer.vertex(this.getX() + width + 1, this.getY() - 1, 0.0D).color(borderColor, borderColor, borderColor, 1.0f).endVertex();
+        buffer.vertex(this.getX() - 1, this.getY() - 1, 0.0D).color(borderColor, borderColor, borderColor, 1.0f).endVertex();
 
-        color = 1.0f;
-        bufferbuilder.vertex(this.getX() + (int) (this.value * (double) (this.width - 8)), this.getY() + height, 1.0D).color(color, color, color, 1.0f).endVertex();
-        bufferbuilder.vertex(this.getX() + (int) (this.value * (double) (this.width - 8)) + 8, this.getY() + height, 1.0D).color(color, color, color, 1.0f).endVertex();
-        bufferbuilder.vertex(this.getX() + (int) (this.value * (double) (this.width - 8)) + 8, this.getY(), 1.0D).color(color, color, color, 1.0f).endVertex();
-        bufferbuilder.vertex(this.getX() + (int) (this.value * (double) (this.width - 8)), this.getY(), 1.0D).color(color, color, color, 1.0f).endVertex();
-        BufferUploader.drawWithShader(bufferbuilder.end());
+        float thumbColor = 1.0f;
+        int thumbX = this.getX() + (int) (this.value * (double) (this.width - 8));
+        buffer.vertex(thumbX, this.getY() + height, 0.0D).color(thumbColor, thumbColor, thumbColor, 1.0f).endVertex();
+        buffer.vertex(thumbX + 8, this.getY() + height, 0.0D).color(thumbColor, thumbColor, thumbColor, 1.0f).endVertex();
+        buffer.vertex(thumbX + 8, this.getY(), 0.0D).color(thumbColor, thumbColor, thumbColor, 1.0f).endVertex();
+        buffer.vertex(thumbX, this.getY(), 0.0D).color(thumbColor, thumbColor, thumbColor, 1.0f).endVertex();
+
+        BufferUploader.drawWithShader(buffer.end());
+
+        guiGraphics.flush();
         RenderSystem.defaultBlendFunc();
-        RenderSystem.disableBlend();
+
+        guiGraphics.drawCenteredString(font, this.getMessage(), this.getX() + this.width / 2, this.getY() + (this.height - 8) / 2, textColor | 0xFF000000);
+        RenderSystem.enableDepthTest();
     }
 
     public @Nullable Component getDetails() {
-        if (isHovered) {
-            return detailMessage.get();
-        }
-        return null;
-    }
-
-    @Override
-    public void onRelease(double p_93609_, double p_93610_) {
-        super.onRelease(p_93609_, p_93610_);
-        this.setFocused(false);
+        return isHovered && detailMessage != null ? detailMessage.get() : null;
     }
 }

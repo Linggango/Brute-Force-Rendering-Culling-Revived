@@ -14,8 +14,8 @@ public class DummySection implements IRenderSectionVisibility {
     }
 
     @Override
-    public boolean bruteForceRenderingRevived$shouldCheckVisibility(int clientTick) {
-        return false;
+    public boolean bruteForceRenderingRevived$shouldCheckVisibilityInverted(int clientTick) {
+        return true;
     }
 
     @Override

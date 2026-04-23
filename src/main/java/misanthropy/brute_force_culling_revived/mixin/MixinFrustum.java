@@ -20,17 +20,24 @@ public abstract class MixinFrustum {
 
     @Inject(method = "isVisible", at = @At(value = "RETURN"), cancellable = true)
     public void afterVisible(@NotNull AABB aabb, @NotNull CallbackInfoReturnable<Boolean> cir) {
-        if (CullingStateManager.applyFrustum && Config.shouldCullChunk() && cir.getReturnValue()) {
-            DummySection section = DUMMY_SECTION.get();
-            section.set(
-                    (int) (aabb.minX + (aabb.maxX - aabb.minX) * 0.5D),
-                    (int) (aabb.minY + (aabb.maxY - aabb.minY) * 0.5D),
-                    (int) (aabb.minZ + (aabb.maxZ - aabb.minZ) * 0.5D)
-            );
+        if (!cir.getReturnValue() || !CullingStateManager.applyFrustum || !Config.shouldCullChunk()) {
+            return;
+        }
+        double sizeX = aabb.maxX - aabb.minX;
+        if (sizeX < 15.0 || sizeX > 17.0) {
+            return;
+        }
 
-            if (!CullingStateManager.shouldRenderChunk(section, true)) {
-                cir.setReturnValue(false);
-            }
+        DummySection section = DUMMY_SECTION.get();
+
+        section.set(
+                (int) ((aabb.minX + aabb.maxX) * 0.5D),
+                (int) ((aabb.minY + aabb.maxY) * 0.5D),
+                (int) ((aabb.minZ + aabb.maxZ) * 0.5D)
+        );
+
+        if (!CullingStateManager.shouldRenderChunk(section, true)) {
+            cir.setReturnValue(false);
         }
     }
 }

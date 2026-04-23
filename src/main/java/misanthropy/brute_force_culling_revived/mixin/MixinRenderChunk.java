@@ -14,12 +14,13 @@ public abstract class MixinRenderChunk implements IRenderSectionVisibility {
     @Shadow
     @Final
     BlockPos.MutableBlockPos origin;
+
     @Unique
     private int bruteForceRenderingRevived$cullingLastVisibleFrame;
 
     @Override
-    public boolean bruteForceRenderingRevived$shouldCheckVisibility(int frame) {
-        return frame == bruteForceRenderingRevived$cullingLastVisibleFrame;
+    public boolean bruteForceRenderingRevived$shouldCheckVisibilityInverted(int frame) {
+        return frame != bruteForceRenderingRevived$cullingLastVisibleFrame;
     }
 
     @Override

@@ -1,6 +1,7 @@
 package misanthropy.brute_force_culling_revived.api;
 
 import com.google.common.collect.ImmutableList;
+import misanthropy.brute_force_culling_revived.api.data.ChunkCullingMap;
 import net.minecraftforge.common.ForgeConfigSpec;
 
 import java.util.ArrayList;
@@ -67,7 +68,8 @@ public class Config {
         if (unload())
             return false;
 
-        if (CullingStateManager.CHUNK_CULLING_MAP == null || !CullingStateManager.CHUNK_CULLING_MAP.isDone())
+        ChunkCullingMap chunkCullingMap = CullingStateManager.CHUNK_CULLING_MAP;
+        if (chunkCullingMap == null || !chunkCullingMap.isDone())
             return false;
 
         return getCullChunk();

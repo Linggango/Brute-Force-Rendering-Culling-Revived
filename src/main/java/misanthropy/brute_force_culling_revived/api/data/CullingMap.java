@@ -37,10 +37,6 @@ public abstract class CullingMap {
         return delayCount <= 0;
     }
 
-    public void syncDelay(@NotNull CullingMap map) {
-        map.delayCount = this.delayCount;
-    }
-
     public void transferData() {
         if (delayCount <= 0) {
             GL30.glBindFramebuffer(GL30.GL_FRAMEBUFFER, bindFrameBufferId());

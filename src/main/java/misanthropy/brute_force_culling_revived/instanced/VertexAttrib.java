@@ -48,7 +48,6 @@ public abstract class VertexAttrib implements AutoCloseable {
 
     public void bind() {
         GL15.glBindBuffer(34962, vertexID);
-
     }
 
     public void enableVertexAttribArray() {

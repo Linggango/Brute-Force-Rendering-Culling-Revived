@@ -52,13 +52,18 @@ public abstract class MixinRenderSectionManager {
 
     @Inject(method = "update", at = @At(value = "HEAD"), remap = false, cancellable = true)
     private void onUpdate(Camera camera, Viewport viewport, int frame, boolean spectator, @NotNull CallbackInfo ci) {
-        if(CullingStateManager.checkCulling && CullingStateManager.DEBUG > 1) {
+        if (CullingStateManager.checkCulling && CullingStateManager.DEBUG > 1) {
             ci.cancel();
         }
         CullingStateManager.updating();
     }
 
-    @ModifyVariable(name = "visitor", method = "createTerrainRenderList", at = @At(value = "INVOKE", target = "Lme/jellysquid/mods/sodium/client/render/chunk/occlusion/OcclusionCuller;findVisible(Lme/jellysquid/mods/sodium/client/render/chunk/occlusion/OcclusionCuller$Visitor;Lme/jellysquid/mods/sodium/client/render/viewport/Viewport;FZI)V", shift = At.Shift.BEFORE), remap = false)
+    @ModifyVariable(
+            name = "visitor",
+            method = "createTerrainRenderList",
+            at = @At(value = "INVOKE", target = "Lme/jellysquid/mods/sodium/client/render/chunk/occlusion/OcclusionCuller;findVisible(Lme/jellysquid/mods/sodium/client/render/chunk/occlusion/OcclusionCuller$Visitor;Lme/jellysquid/mods/sodium/client/render/viewport/Viewport;FZI)V"),
+            remap = false
+    )
     private VisibleChunkCollector onCreateTerrainRenderList(VisibleChunkCollector visitor) {
         if (Config.getAsyncChunkRebuild()) {
             VisibleChunkCollector collector = CullingStateManager.renderingIris() ? SodiumSectionAsyncUtil.getShadowCollector() : SodiumSectionAsyncUtil.getChunkCollector();
@@ -71,7 +76,7 @@ public abstract class MixinRenderSectionManager {
     private void onCreateTerrainRenderList(boolean updateImmediately, CallbackInfo ci) {
         if (Config.getAsyncChunkRebuild()) {
             VisibleChunkCollector collector = CullingStateManager.renderingIris() ? SodiumSectionAsyncUtil.getShadowCollector() : SodiumSectionAsyncUtil.getChunkCollector();
-            if(collector != null)
+            if (collector != null)
                 this.renderLists = collector.createRenderLists();
         }
     }

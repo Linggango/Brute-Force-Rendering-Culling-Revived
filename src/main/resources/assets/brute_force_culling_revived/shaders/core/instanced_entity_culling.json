@@ -6,7 +6,12 @@
     },
     "vertex": "brute_force_culling_revived:instanced_entity_culling",
     "fragment": "brute_force_culling_revived:entity_culling",
-    "attributes": [],
+    "attributes": [
+        "Position",
+        "index",
+        "EntitySize",
+        "EntityCenter"
+    ],
     "samplers": [
         { "name": "Sampler0" },
         { "name": "Sampler1" },

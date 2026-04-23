@@ -23,58 +23,31 @@ import javax.annotation.Nullable;
 public abstract class MixinShaderInstance implements ICullingShader {
     @Shadow
     @Nullable
-    public Uniform getUniform(String p_173349_) {
-        return null;
-    }
+    public abstract Uniform getUniform(String name);
 
-    @Unique
-    @Nullable
-    public Uniform CULLING_CAMERA_POS;
-    @Unique
-    @Nullable
-    public Uniform CULLING_CAMERA_DIR;
-    @Nullable
-    @Unique
-    public Uniform BOX_SCALE;
-    @Nullable
-    @Unique
-    public Uniform RENDER_DISTANCE;
-    @Nullable
-    @Unique
-    public Uniform DEPTH_SIZE;
-    @Nullable
-    @Unique
-    public Uniform CULLING_SIZE;
-    @Nullable
-    @Unique
-    public Uniform ENTITY_CULLING_SIZE;
-    @Nullable
-    @Unique
-    public Uniform LEVEL_HEIGHT_OFFSET;
-    @Nullable
-    @Unique
-    public Uniform LEVEL_MIN_SECTION;
-    @Nullable
-    @Unique
-    public Uniform CULLING_FRUSTUM;
-    @Nullable
-    @Unique
-    public Uniform FRUSTUM_POS;
-    @Nullable
-    @Unique
-    public Uniform TEST_POS;
-    @Nullable
-    @Unique
-    public Uniform CULLING_VIEW_MAT;
-    @Nullable
-    @Unique
-    public Uniform CULLING_PROJ_MAT;
+    @Unique @Nullable private Uniform CULLING_CAMERA_POS;
+    @Unique @Nullable private Uniform CULLING_CAMERA_DIR;
+    @Unique @Nullable private Uniform BOX_SCALE;
+    @Unique @Nullable private Uniform RENDER_DISTANCE;
+    @Unique @Nullable private Uniform DEPTH_SIZE;
+    @Unique @Nullable private Uniform CULLING_SIZE;
+    @Unique @Nullable private Uniform ENTITY_CULLING_SIZE;
+    @Unique @Nullable private Uniform LEVEL_HEIGHT_OFFSET;
+    @Unique @Nullable private Uniform LEVEL_MIN_SECTION;
+    @Unique @Nullable private Uniform CULLING_FRUSTUM;
+    @Unique @Nullable private Uniform FRUSTUM_POS;
+    @Unique @Nullable private Uniform TEST_POS;
+    @Unique @Nullable private Uniform CULLING_VIEW_MAT;
+    @Unique @Nullable private Uniform CULLING_PROJ_MAT;
 
     @Final
     @Shadow
     private int programId;
 
-    @Inject(at = @At("TAIL"), method = "<init>(Lnet/minecraft/server/packs/resources/ResourceProvider;Lnet/minecraft/resources/ResourceLocation;Lcom/mojang/blaze3d/vertex/VertexFormat;)V")
+    @Inject(
+            method = "<init>(Lnet/minecraft/server/packs/resources/ResourceProvider;Lnet/minecraft/resources/ResourceLocation;Lcom/mojang/blaze3d/vertex/VertexFormat;)V",
+            at = @At("RETURN")
+    )
     public void construct(CallbackInfo ci) {
         this.CULLING_CAMERA_POS = this.getUniform("CullingCameraPos");
         this.CULLING_CAMERA_DIR = this.getUniform("CullingCameraDir");
@@ -92,80 +65,26 @@ public abstract class MixinShaderInstance implements ICullingShader {
         this.CULLING_PROJ_MAT = this.getUniform("CullingProjMat");
     }
 
-    @Override
-    public @org.jetbrains.annotations.Nullable Uniform bruteForceRenderingRevived$getCullingFrustum() {
-        return CULLING_FRUSTUM;
-    }
-
-    @Override
-    public @org.jetbrains.annotations.Nullable Uniform bruteForceRenderingRevived$getCullingCameraPos() {
-        return CULLING_CAMERA_POS;
-    }
-
-    @Override
-    public @org.jetbrains.annotations.Nullable Uniform bruteForceRenderingRevived$getRenderDistance() {
-        return RENDER_DISTANCE;
-    }
-
-    @Override
-    public @org.jetbrains.annotations.Nullable Uniform bruteForceRenderingRevived$getDepthSize() {
-        return DEPTH_SIZE;
-    }
-
-    @Override
-    public @org.jetbrains.annotations.Nullable Uniform bruteForceRenderingRevived$getCullingSize() {
-        return CULLING_SIZE;
-    }
-
-    @Override
-    public @org.jetbrains.annotations.Nullable Uniform bruteForceRenderingRevived$getLevelHeightOffset() {
-        return LEVEL_HEIGHT_OFFSET;
-    }
-
-    @Override
-    public @org.jetbrains.annotations.Nullable Uniform bruteForceRenderingRevived$getLevelMinSection() {
-        return LEVEL_MIN_SECTION;
-    }
-
-    @Override
-    public @org.jetbrains.annotations.Nullable Uniform bruteForceRenderingRevived$getEntityCullingSize() {
-        return ENTITY_CULLING_SIZE;
-    }
-
-    @Override
-    public @org.jetbrains.annotations.Nullable Uniform bruteForceRenderingRevived$getFrustumPos() {
-        return FRUSTUM_POS;
-    }
-
-    @Override
-    public @org.jetbrains.annotations.Nullable Uniform bruteForceRenderingRevived$getCullingViewMat() {
-        return CULLING_VIEW_MAT;
-    }
-
-    @Override
-    public @org.jetbrains.annotations.Nullable Uniform bruteForceRenderingRevived$getCullingProjMat() {
-        return CULLING_PROJ_MAT;
-    }
-
-    @Override
-    public @org.jetbrains.annotations.Nullable Uniform bruteForceRenderingRevived$getCullingCameraDir() {
-        return CULLING_CAMERA_DIR;
-    }
-
-    @Override
-    public @org.jetbrains.annotations.Nullable Uniform bruteForceRenderingRevived$getBoxScale() {
-        return BOX_SCALE;
-    }
-
-    @Override
-    public @org.jetbrains.annotations.Nullable Uniform bruteForceRenderingRevived$getTestPos() {
-        return TEST_POS;
-    }
+    @Override @Nullable public Uniform bruteForceRenderingRevived$getCullingFrustum() { return CULLING_FRUSTUM; }
+    @Override @Nullable public Uniform bruteForceRenderingRevived$getCullingCameraPos() { return CULLING_CAMERA_POS; }
+    @Override @Nullable public Uniform bruteForceRenderingRevived$getRenderDistance() { return RENDER_DISTANCE; }
+    @Override @Nullable public Uniform bruteForceRenderingRevived$getDepthSize() { return DEPTH_SIZE; }
+    @Override @Nullable public Uniform bruteForceRenderingRevived$getCullingSize() { return CULLING_SIZE; }
+    @Override @Nullable public Uniform bruteForceRenderingRevived$getLevelHeightOffset() { return LEVEL_HEIGHT_OFFSET; }
+    @Override @Nullable public Uniform bruteForceRenderingRevived$getLevelMinSection() { return LEVEL_MIN_SECTION; }
+    @Override @Nullable public Uniform bruteForceRenderingRevived$getEntityCullingSize() { return ENTITY_CULLING_SIZE; }
+    @Override @Nullable public Uniform bruteForceRenderingRevived$getFrustumPos() { return FRUSTUM_POS; }
+    @Override @Nullable public Uniform bruteForceRenderingRevived$getCullingViewMat() { return CULLING_VIEW_MAT; }
+    @Override @Nullable public Uniform bruteForceRenderingRevived$getCullingProjMat() { return CULLING_PROJ_MAT; }
+    @Override @Nullable public Uniform bruteForceRenderingRevived$getCullingCameraDir() { return CULLING_CAMERA_DIR; }
+    @Override @Nullable public Uniform bruteForceRenderingRevived$getBoxScale() { return BOX_SCALE; }
+    @Override @Nullable public Uniform bruteForceRenderingRevived$getTestPos() { return TEST_POS; }
 
     @Inject(at = @At("TAIL"), method = "apply")
     public void onApply(CallbackInfo ci) {
-        if (CullingStateManager.updatingDepth)
+        if (CullingStateManager.updatingDepth) {
             ProgramManager.glUseProgram(this.programId);
+        }
     }
 
     @Mixin(RenderSystem.class)

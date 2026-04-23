@@ -2,7 +2,6 @@ package misanthropy.brute_force_culling_revived.instanced;
 
 import com.mojang.blaze3d.platform.Window;
 import com.mojang.blaze3d.systems.RenderSystem;
-import com.mojang.blaze3d.vertex.BufferUploader;
 import com.mojang.blaze3d.vertex.VertexFormat;
 import misanthropy.brute_force_culling_revived.api.CullingRenderEvent;
 import net.minecraft.client.Minecraft;
@@ -11,13 +10,18 @@ import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.api.distmarker.OnlyIn;
 import org.jetbrains.annotations.NotNull;
 import org.lwjgl.opengl.GL31;
+import org.lwjgl.opengl.GL15;
 
 import java.nio.FloatBuffer;
 import java.util.function.Consumer;
 
-import static org.lwjgl.opengl.GL15.glBindBuffer;
 @OnlyIn(Dist.CLIENT)
 public class InstanceVertexRenderer implements AutoCloseable {
+    private static final String[] SAMPLER_NAMES = {
+            "Sampler0", "Sampler1", "Sampler2", "Sampler3", "Sampler4", "Sampler5",
+            "Sampler6", "Sampler7", "Sampler8", "Sampler9", "Sampler10", "Sampler11"
+    };
+
     protected final @NotNull VertexAttrib main;
     protected final VertexAttrib update;
     private int arrayObjectId;
@@ -31,7 +35,7 @@ public class InstanceVertexRenderer implements AutoCloseable {
     public InstanceVertexRenderer(VertexFormat.@NotNull Mode mode, @NotNull VertexAttrib mainAttrib, Consumer<FloatBuffer> consumer, VertexAttrib update) {
         this.main = mainAttrib;
         this.update = update;
-        RenderSystem.glGenVertexArrays((p_166881_) -> this.arrayObjectId = p_166881_);
+        RenderSystem.glGenVertexArrays((id) -> this.arrayObjectId = id);
         this.mode = mode;
         this.mainAttrib = mainAttrib;
         init(consumer);
@@ -42,7 +46,7 @@ public class InstanceVertexRenderer implements AutoCloseable {
         bindVertexArray();
         mainAttrib.bind();
         mainAttrib.init(buffer);
-        glBindBuffer(34962, 0);
+        GL15.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
         unbindVertexArray();
     }
 
@@ -53,7 +57,7 @@ public class InstanceVertexRenderer implements AutoCloseable {
     }
 
     public void addInstanceAttrib(Consumer<FloatBuffer> consumer) {
-        if(!updating) {
+        if (!updating) {
             update.bind();
             updating = true;
         }
@@ -62,7 +66,7 @@ public class InstanceVertexRenderer implements AutoCloseable {
     }
 
     public void unbind() {
-        glBindBuffer(34962, 0);
+        GL15.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
     }
 
     public void enableVertexAttribArray() {
@@ -83,97 +87,76 @@ public class InstanceVertexRenderer implements AutoCloseable {
         RenderSystem.glBindVertexArray(() -> 0);
     }
 
-    public void drawWithShader(@NotNull ShaderInstance p_166870_) {
+    public void drawWithShader(@NotNull ShaderInstance shader) {
         if (!RenderSystem.isOnRenderThread()) {
-            RenderSystem.recordRenderCall(() -> this._drawWithShader(p_166870_));
+            RenderSystem.recordRenderCall(() -> this._drawWithShader(shader));
         } else {
-            this._drawWithShader(p_166870_);
+            this._drawWithShader(shader);
         }
     }
 
-    public void _drawWithShader(@NotNull ShaderInstance p_166879_) {
+    public void _drawWithShader(@NotNull ShaderInstance shader) {
         if (this.indexCount != 0 && this.instanceCount > 0) {
             RenderSystem.assertOnRenderThread();
-            BufferUploader.reset();
 
-            for(int i = 0; i < 12; ++i) {
-                int j = RenderSystem.getShaderTexture(i);
-                p_166879_.setSampler("Sampler" + i, j);
+            for (int i = 0; i < 12; ++i) {
+                int tex = RenderSystem.getShaderTexture(i);
+                shader.setSampler(SAMPLER_NAMES[i], tex);
             }
 
-            if (p_166879_.MODEL_VIEW_MATRIX != null) {
-                p_166879_.MODEL_VIEW_MATRIX.set(RenderSystem.getModelViewMatrix());
-            }
-
-            if (p_166879_.PROJECTION_MATRIX != null) {
-                p_166879_.PROJECTION_MATRIX.set(RenderSystem.getProjectionMatrix());
-            }
-
-            if (p_166879_.INVERSE_VIEW_ROTATION_MATRIX != null) {
-                p_166879_.INVERSE_VIEW_ROTATION_MATRIX.set(RenderSystem.getInverseViewRotationMatrix());
-            }
-
-            if (p_166879_.COLOR_MODULATOR != null) {
-                p_166879_.COLOR_MODULATOR.set(RenderSystem.getShaderColor());
-            }
-
-            if (p_166879_.FOG_START != null) {
-                p_166879_.FOG_START.set(RenderSystem.getShaderFogStart());
-            }
-
-            if (p_166879_.FOG_END != null) {
-                p_166879_.FOG_END.set(RenderSystem.getShaderFogEnd());
-            }
-
-            if (p_166879_.FOG_COLOR != null) {
-                p_166879_.FOG_COLOR.set(RenderSystem.getShaderFogColor());
-            }
-
-            if (p_166879_.FOG_SHAPE != null) {
-                p_166879_.FOG_SHAPE.set(RenderSystem.getShaderFogShape().getIndex());
-            }
-
-            if (p_166879_.TEXTURE_MATRIX != null) {
-                p_166879_.TEXTURE_MATRIX.set(RenderSystem.getTextureMatrix());
-            }
-
-            if (p_166879_.GAME_TIME != null) {
-                p_166879_.GAME_TIME.set(RenderSystem.getShaderGameTime());
-            }
-
-            if (p_166879_.SCREEN_SIZE != null) {
+            if (shader.MODEL_VIEW_MATRIX != null) shader.MODEL_VIEW_MATRIX.set(RenderSystem.getModelViewMatrix());
+            if (shader.PROJECTION_MATRIX != null) shader.PROJECTION_MATRIX.set(RenderSystem.getProjectionMatrix());
+            if (shader.INVERSE_VIEW_ROTATION_MATRIX != null) shader.INVERSE_VIEW_ROTATION_MATRIX.set(RenderSystem.getInverseViewRotationMatrix());
+            if (shader.COLOR_MODULATOR != null) shader.COLOR_MODULATOR.set(RenderSystem.getShaderColor());
+            if (shader.FOG_START != null) shader.FOG_START.set(RenderSystem.getShaderFogStart());
+            if (shader.FOG_END != null) shader.FOG_END.set(RenderSystem.getShaderFogEnd());
+            if (shader.FOG_COLOR != null) shader.FOG_COLOR.set(RenderSystem.getShaderFogColor());
+            if (shader.FOG_SHAPE != null) shader.FOG_SHAPE.set(RenderSystem.getShaderFogShape().getIndex());
+            if (shader.TEXTURE_MATRIX != null) shader.TEXTURE_MATRIX.set(RenderSystem.getTextureMatrix());
+            if (shader.GAME_TIME != null) shader.GAME_TIME.set(RenderSystem.getShaderGameTime());
+            if (shader.SCREEN_SIZE != null) {
                 Window window = Minecraft.getInstance().getWindow();
-                p_166879_.SCREEN_SIZE.set((float)window.getWidth(), (float)window.getHeight());
+                shader.SCREEN_SIZE.set((float)window.getWidth(), (float)window.getHeight());
             }
 
-            if (p_166879_.LINE_WIDTH != null && (this.mode == VertexFormat.Mode.LINES || this.mode == VertexFormat.Mode.LINE_STRIP)) {
-                p_166879_.LINE_WIDTH.set(RenderSystem.getShaderLineWidth());
+            if (shader.LINE_WIDTH != null && (this.mode == VertexFormat.Mode.LINES || this.mode == VertexFormat.Mode.LINE_STRIP)) {
+                shader.LINE_WIDTH.set(RenderSystem.getShaderLineWidth());
             }
 
-            CullingRenderEvent.setUniform(p_166879_);
-            RenderSystem.setupShaderLights(p_166879_);
+            CullingRenderEvent.setUniform(shader);
+
+            RenderSystem.setupShaderLights(shader);
 
             bindVertexArray();
+
             bind();
 
             enableVertexAttribArray();
-            p_166879_.apply();
-            GL31.glDrawElementsInstanced(this.mode.asGLMode, this.indexCount, this.indexType.asGLType, 0 , this.instanceCount);
-            p_166879_.clear();
+
+            shader.apply();
+
+            GL31.glDrawElementsInstanced(this.mode.asGLMode, this.indexCount, this.indexType.asGLType, 0, this.instanceCount);
+
+            shader.clear();
+
             disableVertexAttribArray();
 
             unbind();
+
             unbindVertexArray();
+
             this.instanceCount = 0;
+
             this.updating = false;
         }
     }
 
+    @Override
     public void close() {
         main.close();
         update.close();
-
         if (this.arrayObjectId > 0) {
+
             RenderSystem.glDeleteVertexArrays(this.arrayObjectId);
             this.arrayObjectId = 0;
         }

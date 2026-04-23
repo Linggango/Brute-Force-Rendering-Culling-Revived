@@ -17,7 +17,12 @@ public class MixinInactiveProfiler {
     }
 
     @Inject(method = "push(Ljava/lang/String;)V", at = @At(value = "HEAD"))
-    public void onPush(@NotNull String p_18395_, CallbackInfo ci) {
-        CullingStateManager.onProfilerPush(p_18395_);
+    public void onPush(String name, CallbackInfo ci) {
+        if (!name.isEmpty()) {
+            char c = name.charAt(0);
+            if (c == 'c' || c == 'o') {
+                CullingStateManager.onProfilerPush(name);
+            }
+        }
     }
-}
+    }

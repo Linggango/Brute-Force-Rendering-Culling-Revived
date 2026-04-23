@@ -17,6 +17,11 @@ public class ChunkCullingMap extends CullingMap {
     }
 
     @Override
+    public void cleanup() {
+        super.cleanup();
+    }
+
+    @Override
     protected boolean shouldUpdate() {
         return CullingStateManager.continueUpdateChunk();
     }
