@@ -36,6 +36,7 @@ import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.config.ModConfig;
 import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
 import net.minecraftforge.fml.loading.FMLLoader;
+import net.minecraftforge.fml.loading.moddiscovery.ModInfo;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.joml.FrustumIntersection;
@@ -44,6 +45,8 @@ import org.lwjgl.glfw.GLFW;
 
 import java.io.IOException;
 import java.lang.reflect.Field;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 import static java.lang.Thread.MAX_PRIORITY;
 import static misanthropy.brute_force_culling_revived.api.CullingStateManager.*;
@@ -51,12 +54,16 @@ import static misanthropy.brute_force_culling_revived.api.CullingStateManager.*;
 @Mod("brute_force_culling_revived")
 public class ModLoader {
     private static Field frustumPlanesField;
-    private static Boolean hasSodiumCache;
-    private static Boolean hasIrisCache;
-    private static Boolean hasNvidiumCache;
+
+    private static Set<String> loadedModIds;
 
     public ModLoader() {
         DistExecutor.unsafeRunWhenOn(Dist.CLIENT, () -> () -> {
+
+            loadedModIds = FMLLoader.getLoadingModList().getMods().stream()
+                    .map(ModInfo::getModId)
+                    .collect(Collectors.toUnmodifiableSet());
+
             registerShader();
             MinecraftForge.EVENT_BUS.register(this);
             MinecraftForge.EVENT_BUS.register(new CullingRenderEvent());
@@ -88,7 +95,7 @@ public class ModLoader {
     public void registerKeyBinding(@NotNull RegisterKeyMappingsEvent event) {
         event.register(CONFIG_KEY);
         event.register(DEBUG_KEY);
-        //event.register(TEST_CULL_KEY);
+
     }
 
     private void registerShader() {
@@ -100,25 +107,26 @@ public class ModLoader {
 
     static {
         RenderSystem.recordRenderCall(() -> {
+            Minecraft mc = Minecraft.getInstance();
             CULL_TEST_TARGET = new TextureTarget(
-                    Minecraft.getInstance().getWindow().getWidth(),
-                    Minecraft.getInstance().getWindow().getHeight(),
+                    mc.getWindow().getWidth(),
+                    mc.getWindow().getHeight(),
                     false,
                     Minecraft.ON_OSX
             );
             CULL_TEST_TARGET.setClearColor(0.0F, 0.0F, 0.0F, 0.0F);
         });
-
     }
 
     private void initShader() {
         LOGGER.debug("try init shader chunk_culling");
         try {
-            CHUNK_CULLING_SHADER = new ShaderInstance(Minecraft.getInstance().getResourceManager(), new ResourceLocation(MOD_ID, "chunk_culling"), DefaultVertexFormat.POSITION);
-            INSTANCED_ENTITY_CULLING_SHADER = new ShaderInstance(Minecraft.getInstance().getResourceManager(), new ResourceLocation(MOD_ID, "instanced_entity_culling"), DefaultVertexFormat.POSITION);
-            COPY_DEPTH_SHADER = new ShaderInstance(Minecraft.getInstance().getResourceManager(), new ResourceLocation(MOD_ID, "copy_depth"), DefaultVertexFormat.POSITION);
-            REMOVE_COLOR_SHADER = new ShaderInstance(Minecraft.getInstance().getResourceManager(), new ResourceLocation(MOD_ID, "remove_color"), DefaultVertexFormat.POSITION_COLOR_TEX);
-            CULL_TEST_SHADER = new ShaderInstance(Minecraft.getInstance().getResourceManager(), new ResourceLocation(MOD_ID, "culling_test"), DefaultVertexFormat.POSITION);
+            var rm = Minecraft.getInstance().getResourceManager();
+            CHUNK_CULLING_SHADER           = new ShaderInstance(rm, new ResourceLocation(MOD_ID, "chunk_culling"),             DefaultVertexFormat.POSITION);
+            INSTANCED_ENTITY_CULLING_SHADER = new ShaderInstance(rm, new ResourceLocation(MOD_ID, "instanced_entity_culling"), DefaultVertexFormat.POSITION);
+            COPY_DEPTH_SHADER              = new ShaderInstance(rm, new ResourceLocation(MOD_ID, "copy_depth"),               DefaultVertexFormat.POSITION);
+            REMOVE_COLOR_SHADER            = new ShaderInstance(rm, new ResourceLocation(MOD_ID, "remove_color"),             DefaultVertexFormat.POSITION_COLOR_TEX);
+            CULL_TEST_SHADER               = new ShaderInstance(rm, new ResourceLocation(MOD_ID, "culling_test"),             DefaultVertexFormat.POSITION);
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
@@ -126,25 +134,25 @@ public class ModLoader {
 
     @SubscribeEvent
     public void onKeyboardInput(InputEvent.Key event) {
-        if (Minecraft.getInstance().player != null) {
-            if (CONFIG_KEY.isDown()) {
-                Minecraft.getInstance().setScreen(new ConfigScreen(Component.translatable(MOD_ID + ".config")));
-            }
-            if (DEBUG_KEY.isDown()) {
-                DEBUG++;
-                if (DEBUG >= 3)
-                    DEBUG = 0;
-            }
-            if (TEST_CULL_KEY.isDown()) {
-                Vec3 vec3 = Minecraft.getInstance().player.getViewVector(0.0F).scale(999);
-                Level level = Minecraft.getInstance().player.level();
-                Vec3 vec31 = Minecraft.getInstance().player.getEyePosition();
-                BlockHitResult hitResult = level.clip(new ClipContext(vec31, vec31.add(vec3), ClipContext.Block.VISUAL, ClipContext.Fluid.NONE, Minecraft.getInstance().player));
-                if (hitResult instanceof BlockHitResult) {
-                    BlockPos pos = hitResult.getBlockPos();
-                    testPos = new BlockPos(pos.getX() >> 4, pos.getY() >> 4, pos.getZ() >> 4);
-                }
-            }
+
+        Minecraft mc = Minecraft.getInstance();
+        if (mc.player == null) return;
+
+        if (CONFIG_KEY.isDown()) {
+            mc.setScreen(new ConfigScreen(Component.translatable(MOD_ID + ".config")));
+        }
+        if (DEBUG_KEY.isDown()) {
+            DEBUG++;
+            if (DEBUG >= 3) DEBUG = 0;
+        }
+        if (TEST_CULL_KEY.isDown()) {
+            Vec3 eyePos = mc.player.getEyePosition();
+            Vec3 target = eyePos.add(mc.player.getViewVector(0.0F).scale(999));
+            Level level = mc.player.level();
+
+            BlockHitResult hitResult = level.clip(new ClipContext(eyePos, target, ClipContext.Block.VISUAL, ClipContext.Fluid.NONE, mc.player));
+            BlockPos pos = hitResult.getBlockPos();
+            testPos = new BlockPos(pos.getX() >> 4, pos.getY() >> 4, pos.getZ() >> 4);
         }
     }
 
@@ -155,26 +163,29 @@ public class ModLoader {
 
     @SubscribeEvent
     public void onClientTick(TickEvent.@NotNull ClientTickEvent event) {
-        if (event.phase == TickEvent.Phase.START) {
-            if (Minecraft.getInstance().player != null && Minecraft.getInstance().level != null) {
-                clientTickCount++;
-                ChunkCullingMap chunkCullingMap = CHUNK_CULLING_MAP;
-                if (Minecraft.getInstance().player.tickCount > 60 && clientTickCount > 60 && chunkCullingMap != null && !chunkCullingMap.isDone()) {
-                    chunkCullingMap.setDone();
-                    LEVEL_SECTION_RANGE = Minecraft.getInstance().level.getMaxSection() - Minecraft.getInstance().level.getMinSection();
-                    LEVEL_MIN_SECTION_ABS = Math.abs(Minecraft.getInstance().level.getMinSection());
-                    LEVEL_MIN_POS = Minecraft.getInstance().level.getMinBuildHeight();
-                    LEVEL_POS_RANGE = Minecraft.getInstance().level.getMaxBuildHeight() - Minecraft.getInstance().level.getMinBuildHeight();
+        if (event.phase != TickEvent.Phase.START) return;
 
-                    OcclusionCullerThread occlusionCullerThread = new OcclusionCullerThread();
-                    occlusionCullerThread.setName("Chunk Depth Occlusion Cull thread");
-                    occlusionCullerThread.setPriority(MAX_PRIORITY);
-                    occlusionCullerThread.start();
-                }
-                Config.setLoaded();
-            } else {
-                cleanup();
+        Minecraft mc = Minecraft.getInstance();
+
+        if (mc.player != null && mc.level != null) {
+            clientTickCount++;
+            ChunkCullingMap chunkCullingMap = CHUNK_CULLING_MAP;
+            if (mc.player.tickCount > 60 && clientTickCount > 60
+                    && chunkCullingMap != null && !chunkCullingMap.isDone()) {
+                chunkCullingMap.setDone();
+                LEVEL_SECTION_RANGE    = mc.level.getMaxSection() - mc.level.getMinSection();
+                LEVEL_MIN_SECTION_ABS  = Math.abs(mc.level.getMinSection());
+                LEVEL_MIN_POS          = mc.level.getMinBuildHeight();
+                LEVEL_POS_RANGE        = mc.level.getMaxBuildHeight() - mc.level.getMinBuildHeight();
+
+                OcclusionCullerThread occlusionCullerThread = new OcclusionCullerThread();
+                occlusionCullerThread.setName("Chunk Depth Occlusion Cull thread");
+                occlusionCullerThread.setPriority(MAX_PRIORITY);
+                occlusionCullerThread.start();
             }
+            Config.setLoaded();
+        } else {
+            cleanup();
         }
     }
 
@@ -189,43 +200,29 @@ public class ModLoader {
             LOGGER.error("Failed to get frustum planes", e);
         }
 
-        return new Vector4f[6];
+        return new Vector4f[0];
     }
 
-    public static boolean hasMod(String s) {
-        return FMLLoader.getLoadingModList().getMods().stream().anyMatch(modInfo -> modInfo.getModId().equals(s));
+    public static boolean hasMod(String id) {
+        return loadedModIds != null && loadedModIds.contains(id);
     }
 
     public static boolean hasSodium() {
-        if (hasSodiumCache == null) {
-            hasSodiumCache = FMLLoader.getLoadingModList().getMods().stream().anyMatch(modInfo -> modInfo.getModId().equals("sodium") || modInfo.getModId().equals("embeddium"));
-        }
-        return hasSodiumCache;
+        return hasMod("sodium") || hasMod("embeddium");
     }
 
     public static boolean hasIris() {
-        if (hasIrisCache == null) {
-            hasIrisCache = FMLLoader.getLoadingModList().getMods().stream().anyMatch(modInfo -> modInfo.getModId().equals("iris") || modInfo.getModId().equals("oculus"));
-        }
-        return hasIrisCache;
+        return hasMod("iris") || hasMod("oculus");
     }
 
     public static boolean hasNvidium() {
-        if (hasNvidiumCache == null) {
-            hasNvidiumCache = FMLLoader.getLoadingModList().getMods().stream().anyMatch(modInfo -> modInfo.getModId().equals("nvidium")) && NvidiumUtil.nvidiumBfs();
-        }
-        return hasNvidiumCache;
+        return hasMod("nvidium") && NvidiumUtil.nvidiumBfs();
     }
 
     public static @Nullable AABB getObjectAABB(Object o) {
-        if (o instanceof BlockEntity) {
-            return ((BlockEntity) o).getRenderBoundingBox();
-        } else if (o instanceof Entity) {
-            return ((Entity) o).getBoundingBox();
-        } else if (o instanceof IAABBObject) {
-            return ((IAABBObject) o).getAABB();
-        }
-
+        if (o instanceof BlockEntity be)   return be.getRenderBoundingBox();
+        if (o instanceof Entity e)         return e.getBoundingBox();
+        if (o instanceof IAABBObject aabb) return aabb.getAABB();
         return null;
     }
 

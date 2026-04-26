@@ -7,6 +7,7 @@ import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.vertex.*;
 import com.mojang.logging.LogUtils;
 import com.mojang.math.Axis;
+import it.unimi.dsi.fastutil.ints.Int2IntOpenHashMap;
 import misanthropy.brute_force_culling_revived.api.data.ChunkCullingMap;
 import misanthropy.brute_force_culling_revived.api.data.EntityCullingMap;
 import misanthropy.brute_force_culling_revived.api.impl.IEntitiesForRender;
@@ -31,6 +32,7 @@ import net.minecraft.world.phys.Vec3;
 import net.minecraftforge.client.event.ViewportEvent;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
+import net.minecraftforge.registries.ForgeRegistries;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Matrix4f;
@@ -38,7 +40,6 @@ import org.lwjgl.opengl.GL;
 import org.lwjgl.system.Checks;
 import org.slf4j.Logger;
 
-import java.util.HashMap;
 import java.util.function.Consumer;
 
 import static org.lwjgl.opengl.GL11.GL_TEXTURE;
@@ -47,7 +48,7 @@ import static org.lwjgl.opengl.GL30.*;
 public class CullingStateManager {
     public static final String MOD_ID = "brute_force_culling_revived";
     public static final Logger LOGGER = LogUtils.getLogger();
-    public static @Nullable EntityCullingMap ENTITY_CULLING_MAP = null;
+    public static volatile @Nullable EntityCullingMap ENTITY_CULLING_MAP = null;
     public static volatile @Nullable ChunkCullingMap CHUNK_CULLING_MAP = null;
     public static @NotNull Matrix4f VIEW_MATRIX = new Matrix4f();
     public static @NotNull Matrix4f PROJECTION_MATRIX = new Matrix4f();
@@ -107,24 +108,30 @@ public class CullingStateManager {
     public static int LEVEL_POS_RANGE;
     public static int LEVEL_MIN_SECTION_ABS;
     public static int LEVEL_MIN_POS;
+    private static double invLevelPosRange = 0;
     public static Camera CAMERA;
-    private static final HashMap<Integer, Integer> SHADER_DEPTH_BUFFER_ID = new HashMap<>();
+
+    private static final Int2IntOpenHashMap SHADER_DEPTH_BUFFER_ID = new Int2IntOpenHashMap();
     private static int frame;
     private static int lastVisibleUpdatedFrame;
     public static volatile boolean useOcclusionCulling = true;
     private static int continueUpdateCount;
     private static boolean lastUpdate;
 
+    private static double cachedRenderDistanceSq = 0;
+
     static {
         RenderSystem.recordRenderCall(() -> {
+            Minecraft mc = Minecraft.getInstance();
+            int w = mc.getWindow().getWidth();
+            int h = mc.getWindow().getHeight();
             for (int i = 0; i < DEPTH_BUFFER_TARGET.length; ++i) {
-                DEPTH_BUFFER_TARGET[i] = new TextureTarget(Minecraft.getInstance().getWindow().getWidth(), Minecraft.getInstance().getWindow().getHeight(), false, Minecraft.ON_OSX);
+                DEPTH_BUFFER_TARGET[i] = new TextureTarget(w, h, false, Minecraft.ON_OSX);
                 DEPTH_BUFFER_TARGET[i].setClearColor(0.0F, 0.0F, 0.0F, 0.0F);
             }
-
-            CHUNK_CULLING_MAP_TARGET = new TextureTarget(Minecraft.getInstance().getWindow().getWidth(), Minecraft.getInstance().getWindow().getHeight(), false, Minecraft.ON_OSX);
+            CHUNK_CULLING_MAP_TARGET = new TextureTarget(w, h, false, Minecraft.ON_OSX);
             CHUNK_CULLING_MAP_TARGET.setClearColor(0.0F, 0.0F, 0.0F, 0.0F);
-            ENTITY_CULLING_MAP_TARGET = new TextureTarget(Minecraft.getInstance().getWindow().getWidth(), Minecraft.getInstance().getWindow().getHeight(), false, Minecraft.ON_OSX);
+            ENTITY_CULLING_MAP_TARGET = new TextureTarget(w, h, false, Minecraft.ON_OSX);
             ENTITY_CULLING_MAP_TARGET.setClearColor(0.0F, 0.0F, 0.0F, 0.0F);
         });
     }
@@ -134,8 +141,7 @@ public class CullingStateManager {
 
         if (ModLoader.hasIris()) {
             try {
-                SHADER_LOADER = Class.forName("misanthropy.brute_force_culling_revived.util.IrisLoaderImpl")
-                        .asSubclass(ShaderLoader.class)
+                SHADER_LOADER = (ShaderLoader) Class.forName("misanthropy.brute_force_culling_revived.util.IrisLoaderImpl")
                         .getDeclaredConstructor()
                         .newInstance();
             } catch (Exception e) {
@@ -170,76 +176,69 @@ public class CullingStateManager {
 
         SHADER_DEPTH_BUFFER_ID.clear();
         ModLoader.pauseAsync();
-        if(ModLoader.hasSodium()) {
+        if (ModLoader.hasSodium()) {
             SodiumSectionAsyncUtil.pauseAsync();
         }
     }
 
     public static int mapChunkY(double posY) {
+        if (LEVEL_POS_RANGE == 0) return 0;
         double offset = posY - LEVEL_MIN_POS;
-        double mappingRatio = offset / LEVEL_POS_RANGE;
-        return (int) Math.floor(mappingRatio * LEVEL_SECTION_RANGE);
+        return (int) Math.floor(offset * invLevelPosRange * LEVEL_SECTION_RANGE);
     }
 
     public static boolean shouldRenderChunk(@Nullable IRenderSectionVisibility section, boolean checkForChunk) {
-        if (section == null) {
-            return false;
-        }
+        if (section == null) return false;
 
-        ChunkCullingMap chunkCullingMap = CHUNK_CULLING_MAP;
-        if (chunkCullingMap == null) {
-            return true;
-        }
+        final ChunkCullingMap map = CHUNK_CULLING_MAP;
+        if (map == null) return true;
 
         if (DEBUG < 2) {
-            if (!useOcclusionCulling) {
-                return true;
-            }
-            if (section.bruteForceRenderingRevived$shouldCheckVisibilityInverted(lastVisibleUpdatedFrame)) {
-                return true;
-            } else if (chunkCullingMap.isChunkOffsetCameraVisible(section.bruteForceRenderingRevived$getPositionX(), section.bruteForceRenderingRevived$getPositionY(), section.bruteForceRenderingRevived$getPositionZ(), checkForChunk)) {
+            if (!useOcclusionCulling) return true;
+            if (section.bruteForceRenderingRevived$shouldCheckVisibilityInverted(lastVisibleUpdatedFrame)) return true;
+            if (map.isChunkOffsetCameraVisible(
+                    section.bruteForceRenderingRevived$getPositionX(),
+                    section.bruteForceRenderingRevived$getPositionY(),
+                    section.bruteForceRenderingRevived$getPositionZ(),
+                    checkForChunk)) {
                 section.bruteForceRenderingRevived$updateVisibleTick(lastVisibleUpdatedFrame);
                 return true;
             }
             return false;
         }
 
-        if (Config.getAsyncChunkRebuild() && !useOcclusionCulling) {
-            return true;
-        }
+        if (Config.getAsyncChunkRebuild() && !useOcclusionCulling) return true;
 
-        boolean render;
-        boolean actualRender = false;
-
-        if (section.bruteForceRenderingRevived$shouldCheckVisibilityInverted(lastVisibleUpdatedFrame)) {
-            render = true;
-        } else {
-            actualRender = chunkCullingMap.isChunkOffsetCameraVisible(section.bruteForceRenderingRevived$getPositionX(), section.bruteForceRenderingRevived$getPositionY(), section.bruteForceRenderingRevived$getPositionZ(), checkForChunk);
-            render = actualRender;
-        }
+        boolean actualRender = section.bruteForceRenderingRevived$shouldCheckVisibilityInverted(lastVisibleUpdatedFrame)
+                || map.isChunkOffsetCameraVisible(
+                section.bruteForceRenderingRevived$getPositionX(),
+                section.bruteForceRenderingRevived$getPositionY(),
+                section.bruteForceRenderingRevived$getPositionZ(),
+                checkForChunk);
 
         if (actualRender) {
             section.bruteForceRenderingRevived$updateVisibleTick(lastVisibleUpdatedFrame);
         }
 
-        return render;
+        return actualRender;
     }
 
     public static boolean shouldSkipBlockEntity(@NotNull BlockEntity blockEntity, @SuppressWarnings("unused") AABB aabb, @NotNull BlockPos pos) {
         blockCount++;
 
-        if (CAMERA.getPosition().distanceToSqr(pos.getX(), pos.getY(), pos.getZ()) >
-                Minecraft.getInstance().options.getEffectiveRenderDistance() * 16 * Minecraft.getInstance().options.getEffectiveRenderDistance() * 16 * 2) {
-            return false;
-        }
+        final Vec3 camPos = CAMERA.getPosition();
+        final double dx = pos.getX() - camPos.x;
+        final double dy = pos.getY() - camPos.y;
+        final double dz = pos.getZ() - camPos.z;
+        final double distSq = dx * dx + dy * dy + dz * dz;
 
-        EntityCullingMap entityMap = ENTITY_CULLING_MAP;
+        if (distSq > cachedRenderDistanceSq) return false;
+
+        final EntityCullingMap entityMap = ENTITY_CULLING_MAP;
         if (entityMap == null || !Config.getCullBlockEntity()) return false;
 
         ResourceLocation key = BlockEntityType.getKey(blockEntity.getType());
-        if (key == null) return false;
-
-        if (Config.getBlockEntitiesSkip().contains(key.toString())) return false;
+        if (key == null || Config.getBlockEntitiesSkip().contains(key.toString())) return false;
 
         boolean visible = false;
         boolean actualVisible;
@@ -279,10 +278,12 @@ public class CullingStateManager {
     public static boolean shouldSkipEntity(Entity entity) {
         entityCount++;
         if (entity instanceof Player || entity.isCurrentlyGlowing()) return false;
-        if (entity.distanceToSqr(CAMERA.getPosition()) < 4) return false;
-        if (Config.getEntitiesSkip().contains(entity.getType().getDescriptionId())) return false;
+        if (entity.distanceToSqr(CAMERA.getPosition()) < 4.0) return false;
 
-        EntityCullingMap entityMap = ENTITY_CULLING_MAP;
+        ResourceLocation entityKey = ForgeRegistries.ENTITY_TYPES.getKey(entity.getType());
+        if (entityKey != null && Config.getEntitiesSkip().contains(entityKey.toString())) return false;
+
+        final EntityCullingMap entityMap = ENTITY_CULLING_MAP;
         if (entityMap == null || !Config.getCullEntity()) return false;
 
         boolean visible = false;
@@ -321,14 +322,17 @@ public class CullingStateManager {
     }
 
     public static void onProfilerPopPush(@NotNull String s) {
+        Minecraft mc = Minecraft.getInstance();
         switch (s) {
             case "beforeRunTick" -> {
-                if (((AccessorLevelRender) Minecraft.getInstance().levelRenderer).getNeedsFullRenderChunkUpdate() && Minecraft.getInstance().level != null) {
+                if (((AccessorLevelRender) mc.levelRenderer).getNeedsFullRenderChunkUpdate() && mc.level != null) {
                     if (ModLoader.hasMod("embeddium")) ModLoader.pauseAsync();
-                    LEVEL_SECTION_RANGE = Minecraft.getInstance().level.getMaxSection() - Minecraft.getInstance().level.getMinSection();
-                    LEVEL_MIN_SECTION_ABS = Math.abs(Minecraft.getInstance().level.getMinSection());
-                    LEVEL_MIN_POS = Minecraft.getInstance().level.getMinBuildHeight();
-                    LEVEL_POS_RANGE = Minecraft.getInstance().level.getMaxBuildHeight() - Minecraft.getInstance().level.getMinBuildHeight();
+                    Level level = mc.level;
+                    LEVEL_SECTION_RANGE = level.getMaxSection() - level.getMinSection();
+                    LEVEL_MIN_SECTION_ABS = Math.abs(level.getMinSection());
+                    LEVEL_MIN_POS = level.getMinBuildHeight();
+                    LEVEL_POS_RANGE = level.getMaxBuildHeight() - level.getMinBuildHeight();
+                    invLevelPosRange = (LEVEL_POS_RANGE != 0) ? (1.0 / LEVEL_POS_RANGE) : 0;
                 }
             }
             case "afterRunTick" -> {
@@ -337,8 +341,10 @@ public class CullingStateManager {
                 OcclusionCullerThread.shouldUpdate();
             }
             case "captureFrustum" -> {
-                AccessorLevelRender levelFrustum = (AccessorLevelRender) Minecraft.getInstance().levelRenderer;
-                Frustum frustum = levelFrustum.getCapturedFrustum() != null ? levelFrustum.getCapturedFrustum() : levelFrustum.getCullingFrustum();
+                AccessorLevelRender levelFrustum = (AccessorLevelRender) mc.levelRenderer;
+                Frustum frustum = levelFrustum.getCapturedFrustum() != null
+                        ? levelFrustum.getCapturedFrustum()
+                        : levelFrustum.getCullingFrustum();
                 CullingStateManager.FRUSTUM = new Frustum(frustum).offsetToFullyIncludeCameraCube(32);
 
                 ChunkCullingMap chunkMap = CullingStateManager.CHUNK_CULLING_MAP;
@@ -359,7 +365,8 @@ public class CullingStateManager {
         if (s.equals("onKeyboardInput")) {
             ModLoader.onKeyPress();
         } else if (s.equals("center")) {
-            CAMERA = Minecraft.getInstance().gameRenderer.getMainCamera();
+            Minecraft mc = Minecraft.getInstance();
+            CAMERA = mc.gameRenderer.getMainCamera();
             int thisTick = clientTickCount % 20;
 
             isNewTickFrame = (tick != thisTick);
@@ -374,16 +381,20 @@ public class CullingStateManager {
             blockCulling = 0;
             blockCount = 0;
 
-            if (anyNextTick()) {
+            double renderDist = mc.options.getEffectiveRenderDistance() * 16.0;
+            cachedRenderDistanceSq = renderDist * renderDist * 2.0;
+
+            if (isNewTickFrame) {
                 if (fullChunkUpdateCooldown > 0) fullChunkUpdateCooldown--;
                 if (continueUpdateCount > 0) continueUpdateCount--;
             }
 
-            if (isNextLoop()) {
+            if (isNextLoopFrame) {
                 visibleBlock.tick(clientTickCount, 3);
                 visibleEntity.tick(clientTickCount, 3);
 
-                if (ENTITY_CULLING_MAP != null) ENTITY_CULLING_MAP.getEntityTable().tickTemp(clientTickCount);
+                final EntityCullingMap entityMap = ENTITY_CULLING_MAP;
+                if (entityMap != null) entityMap.getEntityTable().tickTemp(clientTickCount);
 
                 applyFrustumTime = preApplyFrustumTime; preApplyFrustumTime = 0;
                 entityCullingTime = preEntityCullingTime; preEntityCullingTime = 0;
@@ -392,7 +403,7 @@ public class CullingStateManager {
                 cullingInitCount = preCullingInitCount; preCullingInitCount = 0;
                 entityCullingInitTime = preEntityCullingInitTime; preEntityCullingInitTime = 0;
 
-                ChunkCullingMap chunkMap = CullingStateManager.CHUNK_CULLING_MAP;
+                final ChunkCullingMap chunkMap = CHUNK_CULLING_MAP;
                 if (chunkMap != null) {
                     chunkMap.lastQueueUpdateCount = chunkMap.queueUpdateCount;
                     chunkMap.queueUpdateCount = 0;
@@ -407,22 +418,22 @@ public class CullingStateManager {
     }
 
     public static void readMapData() {
-        if (!checkCulling) {
-            ChunkCullingMap chunkMap = CHUNK_CULLING_MAP;
-            if (Config.getCullChunk() && chunkMap != null && chunkMap.isTransferred()) {
-                long time = System.nanoTime();
-                chunkMap.readData();
-                lastVisibleUpdatedFrame = frame;
-                preChunkCullingInitTime += System.nanoTime() - time;
-            }
+        if (checkCulling) return;
 
-            EntityCullingMap entityMap = ENTITY_CULLING_MAP;
-            if (Config.doEntityCulling() && entityMap != null && entityMap.isTransferred()) {
-                long time = System.nanoTime();
-                entityMap.readData();
-                lastVisibleUpdatedFrame = frame;
-                preEntityCullingInitTime += System.nanoTime() - time;
-            }
+        final ChunkCullingMap chunkMap = CHUNK_CULLING_MAP;
+        if (Config.getCullChunk() && chunkMap != null && chunkMap.isTransferred()) {
+            long time = System.nanoTime();
+            chunkMap.readData();
+            lastVisibleUpdatedFrame = frame;
+            preChunkCullingInitTime += System.nanoTime() - time;
+        }
+
+        final EntityCullingMap entityMap = ENTITY_CULLING_MAP;
+        if (Config.doEntityCulling() && entityMap != null && entityMap.isTransferred()) {
+            long time = System.nanoTime();
+            entityMap.readData();
+            lastVisibleUpdatedFrame = frame;
+            preEntityCullingInitTime += System.nanoTime() - time;
         }
     }
 
@@ -450,9 +461,10 @@ public class CullingStateManager {
     public static void updateDepthMap() {
         CullingStateManager.PROJECTION_MATRIX.set(RenderSystem.getProjectionMatrix());
         if (anyCulling() && !checkCulling && anyNeedTransfer() && continueUpdateDepth()) {
+            Minecraft mc = Minecraft.getInstance();
             float sampling = (float) Config.getSampling();
-            int width = Minecraft.getInstance().getWindow().getWidth();
-            int height = Minecraft.getInstance().getWindow().getHeight();
+            int width = mc.getWindow().getWidth();
+            int height = mc.getWindow().getHeight();
 
             runOnDepthFrame((ctx) -> {
                 int sw = Math.max(1, (int) (width * sampling * ctx.scale()));
@@ -460,9 +472,10 @@ public class CullingStateManager {
                 if (ctx.frame().width != sw || ctx.frame().height != sh) ctx.frame().resize(sw, sh, Minecraft.ON_OSX);
             });
 
-            int depthTexture = Minecraft.getInstance().getMainRenderTarget().getDepthTextureId();
-            if (SHADER_LOADER != null && SHADER_LOADER.enabledShader()) {
-                int fboId = SHADER_LOADER.getFrameBufferID();
+            int depthTexture = mc.getMainRenderTarget().getDepthTextureId();
+            ShaderLoader loader = SHADER_LOADER;
+            if (loader != null && loader.enabledShader()) {
+                int fboId = loader.getFrameBufferID();
                 if (!SHADER_DEPTH_BUFFER_ID.containsKey(fboId)) {
                     RenderSystem.assertOnRenderThreadOrInit();
                     GlStateManager._glBindFramebuffer(GL_FRAMEBUFFER, fboId);
@@ -499,62 +512,80 @@ public class CullingStateManager {
     }
 
     public static void updateMapData() {
-        if (anyCulling()) {
-            if (anyNeedTransfer()) preCullingInitCount++;
-            if (Config.getCullChunk()) {
-                int dist = Minecraft.getInstance().options.getEffectiveRenderDistance();
-                int renderingDiameter = dist * 2 + 1;
-                int maxSize = renderingDiameter * LEVEL_SECTION_RANGE * renderingDiameter;
-                int cSize = (int) Math.sqrt(maxSize) + 1;
-
-                if (CHUNK_CULLING_MAP_TARGET.width != cSize) {
-                    CHUNK_CULLING_MAP_TARGET.resize(cSize, cSize, Minecraft.ON_OSX);
-                    if (CHUNK_CULLING_MAP != null) {
-                        ChunkCullingMap chunkMap = CHUNK_CULLING_MAP;
-                        assert chunkMap != null;
-                        chunkMap.cleanup();
-                    }
-                    CHUNK_CULLING_MAP = new ChunkCullingMap(cSize, cSize);
-                    ChunkCullingMap chunkMap = CHUNK_CULLING_MAP;
-                    assert chunkMap != null;
-                    chunkMap.generateIndex(dist);
-                }
-                long time = System.nanoTime();
-                if (CHUNK_CULLING_MAP != null) {
-                    ChunkCullingMap chunkMap = CHUNK_CULLING_MAP;
-                    assert chunkMap != null;
-                    chunkMap.transferData();
-                }
-                preChunkCullingInitTime += System.nanoTime() - time;
-            }
-            if (Config.doEntityCulling()) {
-                if (ENTITY_CULLING_MAP == null) ENTITY_CULLING_MAP = new EntityCullingMap(8, 64);
-                int neededH = (ENTITY_CULLING_MAP.getEntityTable().size() / 64 * 64 + 64) / 8 + 1;
-                if (ENTITY_CULLING_MAP_TARGET.height != neededH) {
-                    ENTITY_CULLING_MAP_TARGET.resize(8, neededH, Minecraft.ON_OSX);
-                    EntityCullingMap old = ENTITY_CULLING_MAP;
-                    ENTITY_CULLING_MAP = new EntityCullingMap(8, neededH);
-                    ENTITY_CULLING_MAP.getEntityTable().copyTemp(old.getEntityTable(), clientTickCount);
-                    old.cleanup();
-                }
-                long time = System.nanoTime();
-                ENTITY_CULLING_MAP.transferData();
-                preEntityCullingInitTime += System.nanoTime() - time;
-
-                if (Minecraft.getInstance().level != null) {
-                    ENTITY_CULLING_MAP.getEntityTable().clearIndexMap();
-                    for (Entity e : Minecraft.getInstance().level.entitiesForRendering()) ENTITY_CULLING_MAP.getEntityTable().addObject(e);
-                    for (Object info : ((IEntitiesForRender) Minecraft.getInstance().levelRenderer).bruteForceRenderingRevived$renderChunksInFrustum()) {
-                        for (BlockEntity be : ((IRenderChunkInfo) info).bruteForceRenderingRevived$getRenderChunk().getCompiledChunk().getRenderableBlockEntities()) {
-                            ENTITY_CULLING_MAP.getEntityTable().addObject(be);
-                        }
-                    }
-                    ENTITY_CULLING_MAP.getEntityTable().addAllTemp();
-                }
-            }
-            fps = ((AccessorMinecraft) Minecraft.getInstance()).getFps();
-        } else {
+        if (!anyCulling()) {
             cleanup();
+            return;
+        }
+
+        if (anyNeedTransfer()) preCullingInitCount++;
+        Minecraft mc = Minecraft.getInstance();
+
+        if (Config.getCullChunk()) updateChunkCullingMap(mc);
+        if (Config.doEntityCulling()) updateEntityCullingMap(mc);
+
+        fps = ((AccessorMinecraft) mc).getFps();
+    }
+
+    private static void updateChunkCullingMap(Minecraft mc) {
+        int dist = mc.options.getEffectiveRenderDistance();
+        int renderingDiameter = dist * 2 + 1;
+        int maxSize = renderingDiameter * LEVEL_SECTION_RANGE * renderingDiameter;
+        int cSize = (int) Math.sqrt(maxSize) + 1;
+
+        if (CHUNK_CULLING_MAP_TARGET.width != cSize) {
+            CHUNK_CULLING_MAP_TARGET.resize(cSize, cSize, Minecraft.ON_OSX);
+
+            ChunkCullingMap oldMap = CHUNK_CULLING_MAP;
+            if (oldMap != null) oldMap.cleanup();
+
+            ChunkCullingMap newMap = new ChunkCullingMap(cSize, cSize);
+            CHUNK_CULLING_MAP = newMap;
+            newMap.generateIndex(dist);
+        }
+
+        long time = System.nanoTime();
+        ChunkCullingMap chunkMap = CHUNK_CULLING_MAP;
+        if (chunkMap != null) chunkMap.transferData();
+        preChunkCullingInitTime += System.nanoTime() - time;
+    }
+
+    private static void updateEntityCullingMap(Minecraft mc) {
+
+        EntityCullingMap entityMap = ENTITY_CULLING_MAP;
+        if (entityMap == null) {
+            entityMap = new EntityCullingMap(8, 64);
+            ENTITY_CULLING_MAP = entityMap;
+        }
+
+        int neededH = (entityMap.getEntityTable().size() / 64 * 64 + 64) / 8 + 1;
+        if (ENTITY_CULLING_MAP_TARGET.height != neededH) {
+            ENTITY_CULLING_MAP_TARGET.resize(8, neededH, Minecraft.ON_OSX);
+            EntityCullingMap newMap = new EntityCullingMap(8, neededH);
+            newMap.getEntityTable().copyTemp(entityMap.getEntityTable(), clientTickCount);
+            entityMap.cleanup();
+            entityMap = newMap;
+            ENTITY_CULLING_MAP = entityMap;
+        }
+
+        long time = System.nanoTime();
+        entityMap.transferData();
+        preEntityCullingInitTime += System.nanoTime() - time;
+
+        if (mc.level != null) {
+            entityMap.getEntityTable().clearIndexMap();
+
+            for (Entity e : mc.level.entitiesForRendering()) {
+                entityMap.getEntityTable().addObject(e);
+            }
+
+            IEntitiesForRender levelRenderer = (IEntitiesForRender) mc.levelRenderer;
+            for (Object info : levelRenderer.bruteForceRenderingRevived$renderChunksInFrustum()) {
+                for (BlockEntity be : ((IRenderChunkInfo) info).bruteForceRenderingRevived$getRenderChunk().getCompiledChunk().getRenderableBlockEntities()) {
+                    entityMap.getEntityTable().addObject(be);
+                }
+            }
+
+            entityMap.getEntityTable().addAllTemp();
         }
     }
 
@@ -589,16 +620,22 @@ public class CullingStateManager {
     public static boolean anyCulling() { return Config.getCullChunk() || Config.doEntityCulling(); }
     public static boolean anyNeedTransfer() {
         ChunkCullingMap chunkMap = CHUNK_CULLING_MAP;
-        return (ENTITY_CULLING_MAP != null && ENTITY_CULLING_MAP.needTransferData()) || (chunkMap != null && chunkMap.needTransferData());
+        EntityCullingMap entityCullingMap = ENTITY_CULLING_MAP;
+        return (entityCullingMap != null && entityCullingMap.needTransferData()) || (chunkMap != null && chunkMap.needTransferData());
     }
 
     private static int gl33 = -1;
     public static boolean gl33() {
-        if (RenderSystem.isOnRenderThread() && gl33 < 0) gl33 = (GL.getCapabilities().OpenGL33 || Checks.checkFunctions(GL.getCapabilities().glVertexAttribDivisor)) ? 1 : 0;
+        if (RenderSystem.isOnRenderThread() && gl33 < 0)
+            gl33 = (GL.getCapabilities().OpenGL33 || Checks.checkFunctions(GL.getCapabilities().glVertexAttribDivisor)) ? 1 : 0;
         return gl33 == 1;
     }
+
     public static boolean needPauseRebuild() { return fullChunkUpdateCooldown > 0; }
     public static void updating() { continueUpdateCount = 10; lastUpdate = true; }
     public static boolean continueUpdateChunk() { if (continueUpdateCount > 0) return true; if (lastUpdate) { lastUpdate = false; return true; } return false; }
     public static boolean continueUpdateDepth() { return continueUpdateCount > 0; }
+
+    public static long getPreChunkCullingTime() { return preChunkCullingTime; }
+    public static void setPreChunkCullingTime(long preChunkCullingTime) { CullingStateManager.preChunkCullingTime = preChunkCullingTime; }
 }

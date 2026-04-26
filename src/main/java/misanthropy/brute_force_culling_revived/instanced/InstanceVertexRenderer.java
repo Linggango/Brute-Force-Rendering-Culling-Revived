@@ -9,8 +9,8 @@ import net.minecraft.client.renderer.ShaderInstance;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.api.distmarker.OnlyIn;
 import org.jetbrains.annotations.NotNull;
-import org.lwjgl.opengl.GL31;
 import org.lwjgl.opengl.GL15;
+import org.lwjgl.opengl.GL31;
 
 import java.nio.FloatBuffer;
 import java.util.function.Consumer;
@@ -22,22 +22,20 @@ public class InstanceVertexRenderer implements AutoCloseable {
             "Sampler6", "Sampler7", "Sampler8", "Sampler9", "Sampler10", "Sampler11"
     };
 
-    protected final @NotNull VertexAttrib main;
+    protected final @NotNull VertexAttrib mainAttrib;
     protected final VertexAttrib update;
     private int arrayObjectId;
     protected int indexCount;
     protected int instanceCount;
-    protected final @NotNull VertexAttrib mainAttrib;
     protected final VertexFormat.@NotNull Mode mode;
     private VertexFormat.IndexType indexType;
     private boolean updating = false;
 
     public InstanceVertexRenderer(VertexFormat.@NotNull Mode mode, @NotNull VertexAttrib mainAttrib, Consumer<FloatBuffer> consumer, VertexAttrib update) {
-        this.main = mainAttrib;
-        this.update = update;
-        RenderSystem.glGenVertexArrays((id) -> this.arrayObjectId = id);
-        this.mode = mode;
         this.mainAttrib = mainAttrib;
+        this.update = update;
+        this.mode = mode;
+        RenderSystem.glGenVertexArrays((id) -> this.arrayObjectId = id);
         init(consumer);
         this.indexCount = mode.indexCount(mainAttrib.vertexCount());
     }
@@ -71,11 +69,11 @@ public class InstanceVertexRenderer implements AutoCloseable {
 
     public void enableVertexAttribArray() {
         update.enableVertexAttribArray();
-        main.enableVertexAttribArray();
+        mainAttrib.enableVertexAttribArray();
     }
 
     public void disableVertexAttribArray() {
-        main.disableVertexAttribArray();
+        mainAttrib.disableVertexAttribArray();
         update.disableVertexAttribArray();
     }
 
@@ -95,68 +93,59 @@ public class InstanceVertexRenderer implements AutoCloseable {
         }
     }
 
-    public void _drawWithShader(@NotNull ShaderInstance shader) {
-        if (this.indexCount != 0 && this.instanceCount > 0) {
-            RenderSystem.assertOnRenderThread();
+    private void _drawWithShader(@NotNull ShaderInstance shader) {
 
-            for (int i = 0; i < 12; ++i) {
-                int tex = RenderSystem.getShaderTexture(i);
-                shader.setSampler(SAMPLER_NAMES[i], tex);
-            }
+        int drawInstanceCount = this.instanceCount;
+        this.instanceCount = 0;
+        this.updating = false;
 
-            if (shader.MODEL_VIEW_MATRIX != null) shader.MODEL_VIEW_MATRIX.set(RenderSystem.getModelViewMatrix());
-            if (shader.PROJECTION_MATRIX != null) shader.PROJECTION_MATRIX.set(RenderSystem.getProjectionMatrix());
-            if (shader.INVERSE_VIEW_ROTATION_MATRIX != null) shader.INVERSE_VIEW_ROTATION_MATRIX.set(RenderSystem.getInverseViewRotationMatrix());
-            if (shader.COLOR_MODULATOR != null) shader.COLOR_MODULATOR.set(RenderSystem.getShaderColor());
-            if (shader.FOG_START != null) shader.FOG_START.set(RenderSystem.getShaderFogStart());
-            if (shader.FOG_END != null) shader.FOG_END.set(RenderSystem.getShaderFogEnd());
-            if (shader.FOG_COLOR != null) shader.FOG_COLOR.set(RenderSystem.getShaderFogColor());
-            if (shader.FOG_SHAPE != null) shader.FOG_SHAPE.set(RenderSystem.getShaderFogShape().getIndex());
-            if (shader.TEXTURE_MATRIX != null) shader.TEXTURE_MATRIX.set(RenderSystem.getTextureMatrix());
-            if (shader.GAME_TIME != null) shader.GAME_TIME.set(RenderSystem.getShaderGameTime());
-            if (shader.SCREEN_SIZE != null) {
-                Window window = Minecraft.getInstance().getWindow();
-                shader.SCREEN_SIZE.set((float)window.getWidth(), (float)window.getHeight());
-            }
+        if (this.indexCount == 0 || drawInstanceCount == 0) return;
 
-            if (shader.LINE_WIDTH != null && (this.mode == VertexFormat.Mode.LINES || this.mode == VertexFormat.Mode.LINE_STRIP)) {
-                shader.LINE_WIDTH.set(RenderSystem.getShaderLineWidth());
-            }
+        RenderSystem.assertOnRenderThread();
 
-            CullingRenderEvent.setUniform(shader);
-
-            RenderSystem.setupShaderLights(shader);
-
-            bindVertexArray();
-
-            bind();
-
-            enableVertexAttribArray();
-
-            shader.apply();
-
-            GL31.glDrawElementsInstanced(this.mode.asGLMode, this.indexCount, this.indexType.asGLType, 0, this.instanceCount);
-
-            shader.clear();
-
-            disableVertexAttribArray();
-
-            unbind();
-
-            unbindVertexArray();
-
-            this.instanceCount = 0;
-
-            this.updating = false;
+        for (int i = 0; i < SAMPLER_NAMES.length; ++i) {
+            shader.setSampler(SAMPLER_NAMES[i], RenderSystem.getShaderTexture(i));
         }
+
+        if (shader.MODEL_VIEW_MATRIX != null)            shader.MODEL_VIEW_MATRIX.set(RenderSystem.getModelViewMatrix());
+        if (shader.PROJECTION_MATRIX != null)            shader.PROJECTION_MATRIX.set(RenderSystem.getProjectionMatrix());
+        if (shader.INVERSE_VIEW_ROTATION_MATRIX != null) shader.INVERSE_VIEW_ROTATION_MATRIX.set(RenderSystem.getInverseViewRotationMatrix());
+        if (shader.COLOR_MODULATOR != null)              shader.COLOR_MODULATOR.set(RenderSystem.getShaderColor());
+        if (shader.FOG_START != null)                    shader.FOG_START.set(RenderSystem.getShaderFogStart());
+        if (shader.FOG_END != null)                      shader.FOG_END.set(RenderSystem.getShaderFogEnd());
+        if (shader.FOG_COLOR != null)                    shader.FOG_COLOR.set(RenderSystem.getShaderFogColor());
+        if (shader.FOG_SHAPE != null)                    shader.FOG_SHAPE.set(RenderSystem.getShaderFogShape().getIndex());
+        if (shader.TEXTURE_MATRIX != null)               shader.TEXTURE_MATRIX.set(RenderSystem.getTextureMatrix());
+        if (shader.GAME_TIME != null)                    shader.GAME_TIME.set(RenderSystem.getShaderGameTime());
+        if (shader.SCREEN_SIZE != null) {
+            Window window = Minecraft.getInstance().getWindow();
+            shader.SCREEN_SIZE.set((float) window.getWidth(), (float) window.getHeight());
+        }
+        if (shader.LINE_WIDTH != null && (this.mode == VertexFormat.Mode.LINES || this.mode == VertexFormat.Mode.LINE_STRIP)) {
+            shader.LINE_WIDTH.set(RenderSystem.getShaderLineWidth());
+        }
+
+        CullingRenderEvent.setUniform(shader);
+        RenderSystem.setupShaderLights(shader);
+
+        bindVertexArray();
+        bind();
+        enableVertexAttribArray();
+        shader.apply();
+
+        GL31.glDrawElementsInstanced(this.mode.asGLMode, this.indexCount, this.indexType.asGLType, 0, drawInstanceCount);
+
+        shader.clear();
+        disableVertexAttribArray();
+        unbind();
+        unbindVertexArray();
     }
 
     @Override
     public void close() {
-        main.close();
+        mainAttrib.close();
         update.close();
         if (this.arrayObjectId > 0) {
-
             RenderSystem.glDeleteVertexArrays(this.arrayObjectId);
             this.arrayObjectId = 0;
         }

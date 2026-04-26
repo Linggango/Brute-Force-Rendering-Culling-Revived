@@ -6,23 +6,24 @@ import org.lwjgl.opengl.GL15;
 
 import java.nio.FloatBuffer;
 
+import static org.lwjgl.opengl.GL15.GL_ARRAY_BUFFER;
+import static org.lwjgl.opengl.GL15.GL_STATIC_DRAW;
+
 public class EntityCullingInstanceRenderer extends InstanceVertexRenderer {
+    private static final float[] QUAD_VERTICES = {
+            -1f, -1f,
+            1f, -1f,
+            1f,  1f,
+            -1f,  1f
+    };
 
     public EntityCullingInstanceRenderer() {
         super(VertexFormat.Mode.QUADS, new PixelVertexBuffer(0), EntityCullingInstanceRenderer::init, new EntityUpdateVertex(1));
     }
 
     private static void init(@NotNull FloatBuffer buffer) {
-        buffer.position(0);
-        buffer.put(-1f);
-        buffer.put(-1f);
-        buffer.put(1f);
-        buffer.put(-1f);
-        buffer.put(1f);
-        buffer.put(1f);
-        buffer.put(-1f);
-        buffer.put(1f);
+        buffer.put(QUAD_VERTICES);
         buffer.flip();
-        GL15.glBufferData(34962, buffer, 35044);
+        GL15.glBufferData(GL_ARRAY_BUFFER, buffer, GL_STATIC_DRAW);
     }
 }

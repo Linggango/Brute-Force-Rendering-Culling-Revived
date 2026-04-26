@@ -25,8 +25,8 @@ public abstract class CullingMap {
     public CullingMap(int width, int height) {
         this.width = width;
         this.height = height;
-        cullingBuffer = BufferUtils.createByteBuffer(width * height * 4);
-        pboId = GL15.glGenBuffers();
+        this.cullingBuffer = BufferUtils.createByteBuffer(width * height * 4);
+        this.pboId = GL15.glGenBuffers();
         GL15.glBindBuffer(GL31.GL_PIXEL_PACK_BUFFER, pboId);
         GL15.glBufferData(GL31.GL_PIXEL_PACK_BUFFER, (long) width * height * 4, GL15.GL_DYNAMIC_READ);
         GL15.glBindBuffer(GL31.GL_PIXEL_PACK_BUFFER, 0);
@@ -48,6 +48,7 @@ public abstract class CullingMap {
         } else if (shouldUpdate()) {
             delayCount--;
         }
+
         if (delayCount <= 0) {
             setTransferred(true);
         }
@@ -68,7 +69,6 @@ public abstract class CullingMap {
         if (CullingStateManager.fps > 100) {
             return CullingStateManager.fps / 100;
         }
-
         return 0;
     }
 

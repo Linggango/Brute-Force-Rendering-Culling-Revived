@@ -1,4 +1,4 @@
-package misanthropy.brute_force_culling_revived.mixin.sodium;
+package misanthropy.brute_force_culling_revived.mixin.sodium; // TODO: Optimize
 
 import it.unimi.dsi.fastutil.longs.Long2ReferenceMap;
 import me.jellysquid.mods.sodium.client.gl.device.CommandList;

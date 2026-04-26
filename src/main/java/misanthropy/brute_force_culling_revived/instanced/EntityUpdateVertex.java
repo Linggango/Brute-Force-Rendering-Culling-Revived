@@ -9,20 +9,20 @@ import java.util.function.Consumer;
 public class EntityUpdateVertex extends VertexAttrib {
 
     public EntityUpdateVertex(int index) {
-        super (
-                GLFloatVertex.createF1(index, "index"),
+        super(
+                GLFloatVertex.createF1(index,     "index"),
                 GLFloatVertex.createF2(index + 1, "Size"),
                 GLFloatVertex.createF3(index + 2, "EntityCenter")
         );
     }
 
+    @Override
     public void addAttrib(@NotNull Consumer<FloatBuffer> bufferConsumer) {
         bufferConsumer.accept(this.buffer);
     }
 
     @Override
-    public void init(Consumer<FloatBuffer> bufferConsumer) {
-    }
+    public void init(Consumer<FloatBuffer> bufferConsumer) {}
 
     @Override
     public boolean needUpdate() {

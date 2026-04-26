@@ -4,11 +4,12 @@ import com.google.common.collect.ImmutableList;
 import misanthropy.brute_force_culling_revived.api.data.ChunkCullingMap;
 import net.minecraftforge.common.ForgeConfigSpec;
 
-import java.util.ArrayList;
 import java.util.List;
 
 public class Config {
+
     public static ForgeConfigSpec CLIENT_CONFIG;
+
     private static final ForgeConfigSpec.DoubleValue SAMPLING;
     private static final ForgeConfigSpec.BooleanValue CULL_ENTITY;
     private static final ForgeConfigSpec.BooleanValue CULL_BLOCK_ENTITY;
@@ -19,20 +20,35 @@ public class Config {
     private static final ForgeConfigSpec.ConfigValue<List<? extends String>> ENTITY_SKIP;
     private static final ForgeConfigSpec.ConfigValue<List<? extends String>> BLOCK_ENTITY_SKIP;
 
+    private static final double DEFAULT_SAMPLING = 0.5;
+    private static final double MIN_SAMPLING = 0.05;
+
+    private static volatile boolean loaded = false;
+
+    public static void setLoaded() {
+        loaded = true;
+    }
+
+    private static boolean unload() {
+        return !loaded;
+    }
+
     public static double getSampling() {
         if (unload())
-            return 0.5;
-
-        return Math.max(SAMPLING.get(), 0.05);
+            return DEFAULT_SAMPLING;
+        return Math.max(SAMPLING.get(), MIN_SAMPLING);
     }
 
     public static void setSampling(double value) {
-        SAMPLING.set(Math.max(0.05, value));
+        SAMPLING.set(Math.max(MIN_SAMPLING, value));
         SAMPLING.save();
     }
 
     public static boolean doEntityCulling() {
-        return getCullBlockEntity() || getCullEntity();
+
+        if (unload() || !CullingStateManager.gl33())
+            return false;
+        return CULL_ENTITY.get() || CULL_BLOCK_ENTITY.get();
     }
 
     public static boolean getCullEntity() {
@@ -60,19 +76,16 @@ public class Config {
     public static boolean getCullChunk() {
         if (unload())
             return false;
-
         return CULL_CHUNK.get();
     }
 
     public static boolean shouldCullChunk() {
         if (unload())
             return false;
-
         ChunkCullingMap chunkCullingMap = CullingStateManager.CHUNK_CULLING_MAP;
         if (chunkCullingMap == null || !chunkCullingMap.isDone())
             return false;
-
-        return getCullChunk();
+        return CULL_CHUNK.get();
     }
 
     public static void setCullChunk(boolean value) {
@@ -83,38 +96,28 @@ public class Config {
     public static boolean getAsyncChunkRebuild() {
         if (unload())
             return false;
-
         if (!shouldCullChunk())
             return false;
-
         if (CullingStateManager.needPauseRebuild())
             return false;
-
         if (!ModLoader.hasSodium())
             return false;
-
         if (ModLoader.hasNvidium())
             return false;
-
-        if(getAutoDisableAsync() && CullingStateManager.enabledShader())
+        if (getAutoDisableAsync() && CullingStateManager.enabledShader())
             return false;
-
         return ASYNC.get();
     }
 
     public static void setAsyncChunkRebuild(boolean value) {
         if (!shouldCullChunk())
             return;
-
         if (!ModLoader.hasSodium())
             return;
-
         if (CullingStateManager.needPauseRebuild())
             return;
-
         if (ModLoader.hasNvidium())
             return;
-
         ASYNC.set(value);
         ASYNC.save();
     }
@@ -122,7 +125,6 @@ public class Config {
     public static boolean getAutoDisableAsync() {
         if (unload())
             return false;
-
         return AUTO_DISABLE_ASYNC.get();
     }
 
@@ -138,7 +140,9 @@ public class Config {
     public static int getDepthUpdateDelay() {
         if (unload())
             return 1;
-        return UPDATE_DELAY.get() <= 9 ? UPDATE_DELAY.get() + getShaderDynamicDelay() : UPDATE_DELAY.get();
+
+        int delay = UPDATE_DELAY.get();
+        return delay <= 9 ? delay + getShaderDynamicDelay() : delay;
     }
 
     public static void setDepthUpdateDelay(int value) {
@@ -158,60 +162,49 @@ public class Config {
         return BLOCK_ENTITY_SKIP.get();
     }
 
-    private static boolean loaded = false;
-
-    public static void setLoaded() {
-        loaded = true;
-    }
-
-    private static boolean unload() {
-        return !loaded;
-    }
-
     static {
-        ForgeConfigSpec.Builder CLIENT_BUILDER = new ForgeConfigSpec.Builder();
-        CLIENT_BUILDER.push("Sampling multiple");
-        SAMPLING = CLIENT_BUILDER.defineInRange("multiple", 0.5, 0.0, 1.0);
-        CLIENT_BUILDER.pop();
+        ForgeConfigSpec.Builder builder = new ForgeConfigSpec.Builder();
 
-        CLIENT_BUILDER.push("Culling Map update delay");
-        UPDATE_DELAY = CLIENT_BUILDER.defineInRange("delay frame", 1, 0, 10);
-        CLIENT_BUILDER.pop();
+        builder.push("Sampling multiple");
+        SAMPLING = builder.defineInRange("multiple", DEFAULT_SAMPLING, 0.0, 1.0);
+        builder.pop();
 
-        CLIENT_BUILDER.push("Cull entity");
-        CULL_ENTITY = CLIENT_BUILDER.define("enabled", true);
-        CLIENT_BUILDER.pop();
+        builder.push("Culling Map update delay");
+        UPDATE_DELAY = builder.defineInRange("delay frame", 1, 0, 10);
+        builder.pop();
 
-        CLIENT_BUILDER.push("Cull block entity");
-        CULL_BLOCK_ENTITY = CLIENT_BUILDER.define("enabled", true);
-        CLIENT_BUILDER.pop();
+        builder.push("Cull entity");
+        CULL_ENTITY = builder.define("enabled", true);
+        builder.pop();
 
-        CLIENT_BUILDER.push("Cull chunk");
-        CULL_CHUNK = CLIENT_BUILDER.define("enabled", true);
-        CLIENT_BUILDER.pop();
+        builder.push("Cull block entity");
+        CULL_BLOCK_ENTITY = builder.define("enabled", true);
+        builder.pop();
 
-        CLIENT_BUILDER.push("Async chunk rebuild");
-        ASYNC = CLIENT_BUILDER.define("enabled", true);
-        CLIENT_BUILDER.pop();
+        builder.push("Cull chunk");
+        CULL_CHUNK = builder.define("enabled", true);
+        builder.pop();
 
-        CLIENT_BUILDER.push("Auto disable async rebuild");
-        AUTO_DISABLE_ASYNC = CLIENT_BUILDER.define("enabled", true);
-        CLIENT_BUILDER.pop();
+        builder.push("Async chunk rebuild");
+        ASYNC = builder.define("enabled", true);
+        builder.pop();
 
-        List<String> list = new ArrayList<>();
-        list.add("create:stationary_contraption");
-        CLIENT_BUILDER.comment("Entity skip CULLING").push("Entity ResourceLocation");
-        ENTITY_SKIP = CLIENT_BUILDER.comment("Entity that skip CULLING, example: \n" +
-                "[\"minecraft:creeper\", \"minecraft:zombie\"]").defineList("list", list, (o -> o instanceof String));
-        CLIENT_BUILDER.pop();
+        builder.push("Auto disable async rebuild");
+        AUTO_DISABLE_ASYNC = builder.define("enabled", true);
+        builder.pop();
 
-        list = new ArrayList<>();
-        list.add("minecraft:beacon");
-        CLIENT_BUILDER.comment("Block Entity skip CULLING").push("Block Entity ResourceLocation");
-        BLOCK_ENTITY_SKIP = CLIENT_BUILDER.comment("Block Entity that skip CULLING, example: \n" +
-                "[\"minecraft:chest\", \"minecraft:mob_spawner\"]").defineList("list", list, (o -> o instanceof String));
-        CLIENT_BUILDER.pop();
+        builder.comment("Entity skip CULLING").push("Entity ResourceLocation");
+        ENTITY_SKIP = builder
+                .comment("Entities that skip culling, example: [\"minecraft:creeper\", \"minecraft:zombie\"]")
+                .defineList("list", List.of("create:stationary_contraption"), o -> o instanceof String);
+        builder.pop();
 
-        CLIENT_CONFIG = CLIENT_BUILDER.build();
+        builder.comment("Block Entity skip CULLING").push("Block Entity ResourceLocation");
+        BLOCK_ENTITY_SKIP = builder
+                .comment("Block entities that skip culling, example: [\"minecraft:chest\", \"minecraft:mob_spawner\"]")
+                .defineList("list", List.of("minecraft:beacon"), o -> o instanceof String);
+        builder.pop();
+
+        CLIENT_CONFIG = builder.build();
     }
 }

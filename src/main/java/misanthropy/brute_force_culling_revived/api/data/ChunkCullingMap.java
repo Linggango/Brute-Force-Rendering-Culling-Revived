@@ -38,13 +38,13 @@ public class ChunkCullingMap extends CullingMap {
 
     public void generateIndex(int renderDistance) {
         this.renderDistance = renderDistance;
-        spacePartitionSize = 2 * renderDistance + 1;
+        this.spacePartitionSize = 2 * renderDistance + 1;
     }
 
     public void updateCamera() {
         Vec3 camera = CullingStateManager.CAMERA.getPosition();
-        cameraX = (int) camera.x >> 4;
-        cameraZ = (int) camera.z >> 4;
+        this.cameraX = (int) camera.x >> 4;
+        this.cameraZ = (int) camera.z >> 4;
     }
 
     public boolean isChunkOffsetCameraVisible(int x, int y, int z, boolean checkForChunk) {
@@ -53,7 +53,8 @@ public class ChunkCullingMap extends CullingMap {
 
     public boolean isChunkVisible(int posX, int posY, int posZ, boolean checkForChunk) {
         int index = 1 + (((posX + renderDistance) * spacePartitionSize * CullingStateManager.LEVEL_SECTION_RANGE + (posZ + renderDistance) * CullingStateManager.LEVEL_SECTION_RANGE + posY) << 2);
-        if (index > 0 && index < cullingBuffer.limit()) {
+
+        if (index >= 0 && index < cullingBuffer.limit()) {
             return (cullingBuffer.get(index) & 0xFF) > (checkForChunk ? 0 : 127);
         }
         return false;

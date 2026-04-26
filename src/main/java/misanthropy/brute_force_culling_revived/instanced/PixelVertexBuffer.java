@@ -9,22 +9,25 @@ import java.util.function.Consumer;
 
 public class PixelVertexBuffer extends VertexAttrib {
 
+    private final int componentStride;
+
     public PixelVertexBuffer(int index) {
-        super(
-                GLFloatVertex.createF2(index, "Position")
-        );
+        super(GLFloatVertex.createF2(index, "Position"));
+
+        int stride = 0;
+        for (GLVertex vertex : vertices) {
+            stride += vertex.size();
+        }
+        this.componentStride = stride;
     }
 
+    @Override
     public void addAttrib(Consumer<FloatBuffer> bufferConsumer) {}
 
     @Override
     public void init(@NotNull Consumer<FloatBuffer> bufferConsumer) {
         bufferConsumer.accept(this.buffer);
-        int count = 0;
-        for(GLVertex vertex : vertices) {
-            count += vertex.size();
-        }
-        setVertexCount(this.buffer.limit()/count);
+        setVertexCount(this.buffer.limit() / componentStride);
     }
 
     @Override

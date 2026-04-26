@@ -8,6 +8,7 @@ import misanthropy.brute_force_culling_revived.api.CullingStateManager;
 import misanthropy.brute_force_culling_revived.api.ModLoader;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.gui.components.events.GuiEventListener;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.renderer.GameRenderer;
@@ -17,6 +18,7 @@ import net.minecraft.util.FormattedCharSequence;
 import net.minecraft.util.Mth;
 import org.jetbrains.annotations.NotNull;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -24,12 +26,17 @@ import java.util.function.Supplier;
 
 public class ConfigScreen extends Screen {
     private boolean release = false;
-    int heightScale;
-    int textWidth;
+    private final int heightScale;
+    private int textWidth;
+
+    private GuiEventListener lastHoveredChild = null;
+    private final List<TooltipLine> cachedTooltipLines = new ArrayList<>();
+    private int cachedTooltipTotalHeight = 0;
+    private static final int MAX_TOOLTIP_WIDTH = 202;
 
     public ConfigScreen(@NotNull Component titleIn) {
         super(titleIn);
-        heightScale = (int) (Minecraft.getInstance().font.lineHeight * 2f + 1);
+        this.heightScale = (int) (Minecraft.getInstance().font.lineHeight * 2f + 1);
     }
 
     @Override
@@ -37,22 +44,25 @@ public class ConfigScreen extends Screen {
         return false;
     }
 
-    public static float u(int width) {
-        return (float) width / Minecraft.getInstance().getWindow().getGuiScaledWidth();
+    private float getU(int x, int windowWidth) {
+        return (float) x / windowWidth;
     }
 
-    public static float v(int height) {
-        return 1.0f - ((float) height / (Minecraft.getInstance().getWindow().getGuiScaledHeight()));
+    private float getV(int y, int windowHeight) {
+        return 1.0f - ((float) y / windowHeight);
     }
 
     @Override
     public void renderBackground(@NotNull GuiGraphics guiGraphics) {
-        Minecraft minecraft = Minecraft.getInstance();
-        int width = minecraft.getWindow().getGuiScaledWidth() / 2;
+        Minecraft mc = Minecraft.getInstance();
+        int windowWidth = mc.getWindow().getGuiScaledWidth();
+        int windowHeight = mc.getWindow().getGuiScaledHeight();
+
+        int centerX = windowWidth / 2;
         int widthScale = textWidth / 2 + 15;
-        int right = width - widthScale;
-        int left = width + widthScale;
-        int bottom = (int) (minecraft.getWindow().getGuiScaledHeight() * 0.8) + 20;
+        int right = centerX - widthScale;
+        int left = centerX + widthScale;
+        int bottom = (int) (windowHeight * 0.8) + 20;
         int top = bottom - heightScale * children().size() - 10;
 
         float bgColor = 1.0f;
@@ -67,12 +77,13 @@ public class ConfigScreen extends Screen {
         Tesselator tesselator = Tesselator.getInstance();
         BufferBuilder bufferbuilder = tesselator.getBuilder();
         bufferbuilder.begin(VertexFormat.Mode.QUADS, DefaultVertexFormat.POSITION_COLOR_TEX);
-        bufferbuilder.vertex(right - 1, bottom + 1, 0.0D).color(bgColor, bgColor, bgColor, bgAlpha).uv(u(right - 1), v(bottom + 1)).endVertex();
-        bufferbuilder.vertex(left + 1, bottom + 1, 0.0D).color(bgColor, bgColor, bgColor, bgAlpha).uv(u(left + 1), v(bottom + 1)).endVertex();
-        bufferbuilder.vertex(left + 1, top - 1, 0.0D).color(bgColor, bgColor, bgColor, bgAlpha).uv(u(left + 1), v(top - 1)).endVertex();
-        bufferbuilder.vertex(right - 1, top - 1, 0.0D).color(bgColor, bgColor, bgColor, bgAlpha).uv(u(right - 1), v(top - 1)).endVertex();
 
-        RenderSystem.setShaderTexture(0, minecraft.getMainRenderTarget().getColorTextureId());
+        bufferbuilder.vertex(right - 1, bottom + 1, 0.0D).color(bgColor, bgColor, bgColor, bgAlpha).uv(getU(right - 1, windowWidth), getV(bottom + 1, windowHeight)).endVertex();
+        bufferbuilder.vertex(left + 1, bottom + 1, 0.0D).color(bgColor, bgColor, bgColor, bgAlpha).uv(getU(left + 1, windowWidth), getV(bottom + 1, windowHeight)).endVertex();
+        bufferbuilder.vertex(left + 1, top - 1, 0.0D).color(bgColor, bgColor, bgColor, bgAlpha).uv(getU(left + 1, windowWidth), getV(top - 1, windowHeight)).endVertex();
+        bufferbuilder.vertex(right - 1, top - 1, 0.0D).color(bgColor, bgColor, bgColor, bgAlpha).uv(getU(right - 1, windowWidth), getV(top - 1, windowHeight)).endVertex();
+
+        RenderSystem.setShaderTexture(0, mc.getMainRenderTarget().getColorTextureId());
         BufferUploader.drawWithShader(bufferbuilder.end());
 
         bgAlpha = 1.0f;
@@ -122,6 +133,8 @@ public class ConfigScreen extends Screen {
             return;
         }
 
+        this.textWidth = 0;
+
         if (this.minecraft.player.getName().getString().equals("Dev")) {
             addConfigButton(() -> CullingStateManager.checkCulling, (b) -> CullingStateManager.checkCulling = b, () -> Component.literal("Debug"))
                     .setDetailMessage(() -> Component.translatable("brute_force_culling_revived.detail.debug"));
@@ -150,7 +163,7 @@ public class ConfigScreen extends Screen {
         addConfigButton(Config::getAutoDisableAsync, Config::setAutoDisableAsync, () -> Component.translatable("brute_force_culling_revived.auto_shader_async"))
                 .setDetailMessage(() -> Component.translatable("brute_force_culling_revived.detail.auto_shader_async"));
 
-        addConfigButton(() -> Config.getCullChunk() && ModLoader.hasSodium() && !ModLoader.hasNvidium(), Config::getAsyncChunkRebuild, Config::setAsyncChunkRebuild, () -> Component.translatable("brute_force_culling_revived.async"))
+        addConfigButton(() -> ModLoader.hasSodium() && !ModLoader.hasNvidium(), Config::getAsyncChunkRebuild, Config::setAsyncChunkRebuild, () -> Component.translatable("brute_force_culling_revived.async"))
                 .setDetailMessage(() -> {
                     if (ModLoader.hasNvidium()) return Component.translatable("brute_force_culling_revived.detail.nvidium");
                     if (!ModLoader.hasSodium()) return Component.translatable("brute_force_culling_revived.detail.sodium");
@@ -170,13 +183,7 @@ public class ConfigScreen extends Screen {
     }
 
     public @NotNull NeatButton addConfigButton(Supplier<Boolean> getter, @NotNull Consumer<Boolean> setter, @NotNull Supplier<Component> displayText) {
-        int w = 150;
-        int x = this.width / 2 - w / 2;
-        NeatButton button = new NeatButton(x, (int) ((height * 0.8) - heightScale * children().size()), w, 14, getter, setter, displayText);
-        this.addRenderableWidget(button);
-        this.textWidth = Math.max(Math.max(w, font.width(displayText.get()) + 40), this.textWidth);
-        button.setTextWidthGetter(() -> this.textWidth);
-        return button;
+        return addConfigButton(() -> true, getter, setter, displayText);
     }
 
     public @NotNull NeatButton addConfigButton(Supplier<Boolean> enable, Supplier<Boolean> getter, @NotNull Consumer<Boolean> setter, @NotNull Supplier<Component> displayText) {
@@ -204,45 +211,69 @@ public class ConfigScreen extends Screen {
         this.renderBackground(guiGraphics);
         super.render(guiGraphics, mouseX, mouseY, partialTicks);
 
+        AbstractWidget hovered = null;
         for (GuiEventListener child : children()) {
+            if (child instanceof AbstractWidget widget && widget.isMouseOver(mouseX, mouseY)) {
+                hovered = widget;
+                break;
+            }
+        }
+
+        if (hovered != null) {
             Component details = null;
-            if (child instanceof NeatButton b) details = b.getDetails();
-            else if (child instanceof NeatSliderButton b) details = b.getDetails();
+            if (hovered instanceof NeatButton b) details = b.getDetails();
+            else if (hovered instanceof NeatSliderButton b) details = b.getDetails();
 
             if (details != null) {
-                renderButtonDetails(guiGraphics, details);
+                updateTooltipCache(hovered, details);
+                renderCachedDetails(guiGraphics);
             }
+        } else {
+            lastHoveredChild = null;
         }
     }
 
-    private void renderButtonDetails(@NotNull GuiGraphics guiGraphics, @NotNull Component details) {
+    private void updateTooltipCache(GuiEventListener child, Component details) {
+        if (lastHoveredChild == child) return;
+
+        lastHoveredChild = child;
+        cachedTooltipLines.clear();
+        cachedTooltipTotalHeight = 0;
+
         String[] parts = details.getString().split("\\n");
-        int totalHeight = 0;
-        int maxTextWidth = Math.min(this.width - 20, 202);
+        int maxWidth = Math.min(this.width - 20, MAX_TOOLTIP_WIDTH);
 
-        for (String part : parts) {
-            String cleaned = part.replace("warn:", "");
-            List<FormattedCharSequence> lines = font.split(Component.literal(cleaned), maxTextWidth);
-            totalHeight += lines.isEmpty() ? font.lineHeight / 2 : lines.size() * font.lineHeight + font.lineHeight / 4;
-        }
-
-        int x = this.width / 2 - maxTextWidth / 2;
-        int y = 4;
-
-        guiGraphics.fill(x - 2, y - 2, x + maxTextWidth + 2, y + totalHeight + 2, 0xB0000000);
-
-        int currentY = y;
         for (String part : parts) {
             boolean isWarning = part.contains("warn:");
             String cleaned = part.replace("warn:", "");
-            List<FormattedCharSequence> lines = font.split(Component.literal(cleaned), maxTextWidth);
+            List<FormattedCharSequence> lines = font.split(Component.literal(cleaned), maxWidth);
 
-            for (FormattedCharSequence line : lines) {
-                guiGraphics.drawString(font, line, x, currentY, isWarning ? 0xFFFF5555 : 0xFFFFFFFF, false);
-                currentY += font.lineHeight;
+            if (lines.isEmpty()) {
+                cachedTooltipTotalHeight += font.lineHeight / 2;
+            } else {
+                for (FormattedCharSequence line : lines) {
+                    cachedTooltipLines.add(new TooltipLine(line, isWarning));
+                }
+                cachedTooltipTotalHeight += lines.size() * font.lineHeight + font.lineHeight / 4;
             }
-            if (lines.isEmpty()) currentY += font.lineHeight / 2;
-            else currentY += font.lineHeight / 4;
         }
     }
+
+    private void renderCachedDetails(@NotNull GuiGraphics guiGraphics) {
+        if (cachedTooltipLines.isEmpty()) return;
+
+        int maxWidth = Math.min(this.width - 20, MAX_TOOLTIP_WIDTH);
+        int x = this.width / 2 - maxWidth / 2;
+        int y = 4;
+
+        guiGraphics.fill(x - 2, y - 2, x + maxWidth + 2, y + cachedTooltipTotalHeight + 2, 0xB0000000);
+
+        int currentY = y;
+        for (TooltipLine line : cachedTooltipLines) {
+            guiGraphics.drawString(font, line.text, x, currentY, line.isWarning ? 0xFFFF5555 : 0xFFFFFFFF, false);
+            currentY += font.lineHeight;
+        }
+    }
+
+    private record TooltipLine(FormattedCharSequence text, boolean isWarning) {}
 }
