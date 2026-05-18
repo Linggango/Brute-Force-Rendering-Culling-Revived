@@ -23,6 +23,7 @@
     "MixinShaderInstance",
     "MixinShaderInstance$MixinRenderSystem",
     "MixinWindow",
+    "SkyBlockRendererMixin",
     "sodium.AccessorRenderSectionManager",
     "sodium.MixinOcclusionCuller",
     "sodium.MixinRenderRegion",

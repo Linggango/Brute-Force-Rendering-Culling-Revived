@@ -45,6 +45,7 @@ import java.util.function.Consumer;
 import static org.lwjgl.opengl.GL11.GL_TEXTURE;
 import static org.lwjgl.opengl.GL30.*;
 
+@SuppressWarnings("unused")
 public class CullingStateManager {
     public static final String MOD_ID = "brute_force_culling_revived";
     public static final Logger LOGGER = LogUtils.getLogger();
@@ -238,7 +239,11 @@ public class CullingStateManager {
         if (entityMap == null || !Config.getCullBlockEntity()) return false;
 
         ResourceLocation key = BlockEntityType.getKey(blockEntity.getType());
-        if (key == null || Config.getBlockEntitiesSkip().contains(key.toString())) return false;
+        if (key == null) return false;
+
+        if (Config.getModsSkip().contains(key.getNamespace())) return false;
+
+        if (Config.getBlockEntitiesSkip().contains(key.toString())) return false;
 
         boolean visible = false;
         boolean actualVisible;
@@ -281,6 +286,9 @@ public class CullingStateManager {
         if (entity.distanceToSqr(CAMERA.getPosition()) < 4.0) return false;
 
         ResourceLocation entityKey = ForgeRegistries.ENTITY_TYPES.getKey(entity.getType());
+
+        if (entityKey != null && Config.getModsSkip().contains(entityKey.getNamespace())) return false;
+
         if (entityKey != null && Config.getEntitiesSkip().contains(entityKey.toString())) return false;
 
         final EntityCullingMap entityMap = ENTITY_CULLING_MAP;
@@ -575,12 +583,16 @@ public class CullingStateManager {
             entityMap.getEntityTable().clearIndexMap();
 
             for (Entity e : mc.level.entitiesForRendering()) {
+                ResourceLocation entityKey = ForgeRegistries.ENTITY_TYPES.getKey(e.getType());
+                if (entityKey != null && Config.getModsSkip().contains(entityKey.getNamespace())) continue;
                 entityMap.getEntityTable().addObject(e);
             }
 
             IEntitiesForRender levelRenderer = (IEntitiesForRender) mc.levelRenderer;
             for (Object info : levelRenderer.bruteForceRenderingRevived$renderChunksInFrustum()) {
                 for (BlockEntity be : ((IRenderChunkInfo) info).bruteForceRenderingRevived$getRenderChunk().getCompiledChunk().getRenderableBlockEntities()) {
+                    ResourceLocation beKey = BlockEntityType.getKey(be.getType());
+                    if (beKey != null && Config.getModsSkip().contains(beKey.getNamespace())) continue;
                     entityMap.getEntityTable().addObject(be);
                 }
             }

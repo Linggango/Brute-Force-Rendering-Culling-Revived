@@ -80,6 +80,7 @@ dependencies {
 
     implementation fg.deobf("curse.maven:embeddium-908741:5681725")
     implementation fg.deobf("curse.maven:oculus-581495:6020952")
+    implementation fg.deobf("curse.maven:ars-nouveau-401955:6688854")
 
     implementation("com.google.guava:guava:33.5.0-jre")
     implementation("commons-io:commons-io:2.21.0")

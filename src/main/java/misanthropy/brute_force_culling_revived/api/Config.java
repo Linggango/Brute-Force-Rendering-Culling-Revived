@@ -19,6 +19,7 @@ public class Config {
     private static final ForgeConfigSpec.IntValue UPDATE_DELAY;
     private static final ForgeConfigSpec.ConfigValue<List<? extends String>> ENTITY_SKIP;
     private static final ForgeConfigSpec.ConfigValue<List<? extends String>> BLOCK_ENTITY_SKIP;
+    private static final ForgeConfigSpec.ConfigValue<List<? extends String>> MOD_SKIP;
 
     private static final double DEFAULT_SAMPLING = 0.5;
     private static final double MIN_SAMPLING = 0.05;
@@ -45,7 +46,6 @@ public class Config {
     }
 
     public static boolean doEntityCulling() {
-
         if (unload() || !CullingStateManager.gl33())
             return false;
         return CULL_ENTITY.get() || CULL_BLOCK_ENTITY.get();
@@ -162,6 +162,12 @@ public class Config {
         return BLOCK_ENTITY_SKIP.get();
     }
 
+    public static List<? extends String> getModsSkip() {
+        if (unload())
+            return ImmutableList.of();
+        return MOD_SKIP.get();
+    }
+
     static {
         ForgeConfigSpec.Builder builder = new ForgeConfigSpec.Builder();
 
@@ -203,6 +209,14 @@ public class Config {
         BLOCK_ENTITY_SKIP = builder
                 .comment("Block entities that skip culling, example: [\"minecraft:chest\", \"minecraft:mob_spawner\"]")
                 .defineList("list", List.of("minecraft:beacon"), o -> o instanceof String);
+        builder.pop();
+
+        builder.comment("Mod namespace skip CULLING").push("Mod Namespace");
+        MOD_SKIP = builder
+                .comment("Entire mods that skip culling (matched against ResourceLocation namespace). " +
+                        "Use this for mods whose blocks/entities flicker or behave incorrectly with culling. " +
+                        "Example: [\"ars_nouveau\", \"botania\"]")
+                .defineList("list", List.of("ars_nouveau"), o -> o instanceof String);
         builder.pop();
 
         CLIENT_CONFIG = builder.build();
